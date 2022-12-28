@@ -53,9 +53,9 @@ class SocketInstance {
       console.log(`connected to WebSocket with id ${socket.id}`)
       //* if its the Sender, Call the other Peer and give him the ID of the Sender
       //* to talk him back
-      if (!initiator) {
-        socket.emit('calling', socket.id)
-      }
+      // if (!initiator) {
+      //   socket.emit('calling', socket.id)
+      // }
     })
 
     //* make a TCP connection to java Process.
@@ -89,6 +89,8 @@ class SocketInstance {
       const ipcData = JSON.parse(data)
 
       socket.emit('get_receiver', { receiver: ipcData.receiver })
+
+      socket.emit('calling', socket.id)
 
       //* send a Request to Peer
       // const socket = new SocketInstance().newSocket(false, ipcData.sender, ipcData.receiver)

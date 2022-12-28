@@ -87,6 +87,7 @@ io.on('connection', client => {
   client.on('get_receiver', (data) => {
     // io.to(users.get(receiver)).emit('message', data)
     receiver = data.receiver
+    console.log(receiver + ' got the receiver from IPC')
   })
 
   //* handle Calling event form the Sender and redirect it to the intended recipient
