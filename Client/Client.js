@@ -15,11 +15,6 @@ const client = new net.Socket()
 const port = 6868
 const host = '127.0.0.1'
 
-client.connect(port, host, () => {
-  console.log('Connected to IPC')
-  // client.write('Hello From Client ' + client.address().address)
-})
-
 //* get mode form arguments, weather sender or recipient
 // let mode = process.argv.at(2)
 
@@ -30,25 +25,6 @@ const sender = process.argv.at(2) === undefined
   : process.argv.at(2).toString()
 // if the exe in receive mode there is no need to the 4th arg.
 // let receiver = mode === 'init' ? null : process.argv.at(4).toString()
-
-client.on('data', (data) => {
-  //! it should first the init connection destroyed and as rec connected.
-  const ipcData = JSON.parse(data)
-  //* send a Request to Peer
-  const socket = new SocketInstance().newSocket(false, ipcData.sender, ipcData.receiver)
-  const callee = new PeerConn(false, socket)
-  callee.connect()
-})
-
-client.on('close', () => {
-  console.log('Connection closed')
-  setTimeout(() => process.exit(), 50)
-})
-
-client.on('error', () => {
-  console.log('Connection to Java Process can not be established')
-  setTimeout(() => process.exit(), 50)
-})
 
 //* Class to create new WebSocket Connection
 class SocketInstance {
@@ -72,12 +48,6 @@ class SocketInstance {
       // trickle: false
     })
 
-    //* check before if the socket connected without errors
-    socket.on('connect_error', (err) => {
-      console.log(err.message)
-      setTimeout(() => process.exit(), 50)
-    })
-
     //* on Connect event
     socket.on('connect', (client) => {
       console.log(`connected to WebSocket with id ${socket.id}`)
@@ -86,6 +56,12 @@ class SocketInstance {
       if (!initiator) {
         socket.emit('calling', socket.id)
       }
+    })
+
+    //* make a TCP connection to java Process.
+    client.connect(port, host, () => {
+      console.log('Connected to IPC')
+      // client.write('Hello From Client ' + client.address().address)
     })
 
     //* get new Data Channel session and the ID of the Sender
@@ -100,6 +76,34 @@ class SocketInstance {
     //* if the Connection form the Server side has been disconnected
     socket.on('disconnect', (err) => {
       console.log(err)
+    })
+
+    //* check before if the socket connected without errors
+    socket.on('connect_error', (err) => {
+      console.log(err.message)
+      setTimeout(() => process.exit(), 50)
+    })
+
+    client.on('data', (data) => {
+      //! it should first the init connection destroyed and as rec connected.
+      const ipcData = JSON.parse(data)
+
+      socket.emit('get_receiver', { receiver: ipcData.receiver })
+
+      //* send a Request to Peer
+      // const socket = new SocketInstance().newSocket(false, ipcData.sender, ipcData.receiver)
+      const callee = new PeerConn(false, socket)
+      callee.connect()
+    })
+
+    client.on('close', () => {
+      console.log('Connection closed')
+      setTimeout(() => process.exit(), 50)
+    })
+
+    client.on('error', () => {
+      console.log('Connection to Java Process can not be established')
+      setTimeout(() => process.exit(), 50)
     })
 
     return socket
@@ -293,5 +297,5 @@ new SocketInstance().newSocket(true, sender)
 //   // callee.connect()
 // }
 
-// node Client.js rec dar mou
-// node Client.js init mou
+// ? node Client.js rec dar mou
+// ? node Client.js init mou

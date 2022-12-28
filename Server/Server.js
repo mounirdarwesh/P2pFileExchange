@@ -29,7 +29,7 @@ const users = new Map()
 //* Middleware to handle Logging and Authentication
 io.use((client, next) => {
   const sender = client.handshake.auth.sender
-  const receiver = client.handshake.auth.receiver
+  // const receiver = client.handshake.auth.receiver
 
   //* if username already exist in the hashmap.
   if (users.has(sender)) {
@@ -39,13 +39,13 @@ io.use((client, next) => {
   }
 
   //* disconnect Client if the Receiver name is not correct or Offline
-  if (!users.has(receiver) && client.handshake.auth.initiator === false) {
-    const err = new Error('Receiver name is not correct or he is Offline.')
-    next(err)
-    console.log('Recipient dose not exist or offline.')
-    // TODO fallback in case the recipient dose not exist or is not Online
-    // it should not happen as long as the recipient requested the Data
-  }
+  // if (!users.has(receiver) && client.handshake.auth.initiator === false) {
+  //   const err = new Error('Receiver name is not correct or he is Offline.')
+  //   next(err)
+  //   console.log('Recipient dose not exist or offline.')
+  //   // TODO fallback in case the recipient dose not exist or is not Online
+  //   // it should not happen as long as the recipient requested the Data
+  // }
 
   //* disconnect Client if the Credentials wrong
   //* that ensure the Authenticity of the Client, because DTLS provides just encryption and integrity
@@ -61,7 +61,7 @@ io.use((client, next) => {
 io.on('connection', client => {
   //* username of the sender and recipient
   const sender = client.handshake.auth.sender
-  const receiver = client.handshake.auth.receiver
+  let receiver // = client.handshake.auth.receiver
 
   //* save the Username and his ID in the HashMap
   if (!users.has(sender)) {
@@ -82,6 +82,11 @@ io.on('connection', client => {
 
   client.on('message', (data) => {
     io.to(users.get(receiver)).emit('message', data)
+  })
+
+  client.on('get_receiver', (data) => {
+    // io.to(users.get(receiver)).emit('message', data)
+    receiver = data.receiver
   })
 
   //* handle Calling event form the Sender and redirect it to the intended recipient
