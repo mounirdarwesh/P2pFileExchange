@@ -13,7 +13,7 @@ const turnCredential = require('./turnCredential')
 //* tcp socket to create IPC channel
 const client = new net.Socket()
 const port = 6868
-const host = '127.0.0.1'
+const host = 'localhost'
 
 //* get mode form arguments, weather sender or recipient
 // let mode = process.argv.at(2)
