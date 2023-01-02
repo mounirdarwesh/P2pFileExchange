@@ -38,7 +38,7 @@ class SocketInstance {
         // ? validate the input.
         token: 'V@6wcY1Vh8l78zLMZ126',
         sender: sender,
-        receiver: receiver,
+        // receiver: receiver,
         initiator: initiator
       },
       ca: readFileSync(path.join(__dirname, 'certificate/cert.pem')),
@@ -85,11 +85,13 @@ class SocketInstance {
     })
 
     client.on('data', (data) => {
-      //! it should first the init connection destroyed and as rec connected.
+      // * get the Data form the java Process.
       const ipcData = JSON.parse(data)
 
+      // * send the Receiver name first.
       socket.emit('get_receiver', { receiver: ipcData.receiver })
 
+      // * call the other party.
       socket.emit('calling', socket.id)
 
       //* send a Request to Peer
