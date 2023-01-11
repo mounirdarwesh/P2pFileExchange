@@ -99,6 +99,7 @@ io.on('connection', client => {
   //* Fired when the Sender send Offer
   client.on('offer', (data) => {
     io.to(data.to).emit('offer', data)
+    console.log(data)
   })
 
   //* Fired when the recipient send Answer back

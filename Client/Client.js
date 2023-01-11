@@ -81,7 +81,7 @@ class SocketInstance {
     //* check before if the socket connected without errors
     socket.on('connect_error', (err) => {
       console.log(err.message)
-      setTimeout(() => process.exit(), 50)
+      // setTimeout(() => process.exit(), 50)
     })
 
     client.on('data', (data) => {
@@ -102,12 +102,12 @@ class SocketInstance {
 
     client.on('close', () => {
       console.log('Connection closed')
-      setTimeout(() => process.exit(), 50)
+      // setTimeout(() => process.exit(), 50)
     })
 
     client.on('error', () => {
       console.log('Connection to Java Process can not be established')
-      setTimeout(() => process.exit(), 50)
+      // setTimeout(() => process.exit(), 50)
     })
 
     return socket
