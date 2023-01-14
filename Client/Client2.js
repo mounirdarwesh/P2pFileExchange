@@ -2,7 +2,7 @@
 
 /* eslint-disable object-shorthand */
 /* eslint-disable space-before-function-paren */
-const { readFileSync, readFile, writeFile, createReadStream, createWriteStream } = require('fs')
+const { unlink, readFileSync, readFile, writeFile, createReadStream, createWriteStream } = require('fs')
 const { io } = require('socket.io-client')
 const Peer = require('simple-peer')
 const wrtc = require('wrtc')
@@ -83,19 +83,21 @@ class SocketInstance {
       // setTimeout(() => process.exit(), 50)
     })
 
-    // if (sortedFiles.length > 1) {
-    //   console.log('folder contains data')
-    //   // * send the Receiver name first.
-    //   socket.emit('get_receiver', { receiver: receiver })
+    // setTimeout(() => {
+    //   if (sortedFiles.length > 0) {
+    //     console.log('folder contains data')
+    //     // * send the Receiver name first.
+    //     socket.emit('get_receiver', { receiver: receiver })
 
-    //   // * call the other party.
-    //   socket.emit('calling', socket.id)
-    //   console.log('calling other party')
-    //   //* send a Request to Peer
-    //   // const socket = new SocketInstance().newSocket(false, ipcData.sender, ipcData.receiver)
-    //   const callee = new PeerConn(true, socket)
-    //   callee.connect()
-    // }
+    //     // * call the other party.
+    //     socket.emit('calling', socket.id)
+
+    //     //* send a Request to Peer
+    //     // const socket = new SocketInstance().newSocket(false, ipcData.sender, ipcData.receiver)
+    //     const callee = new PeerConn(true, socket)
+    //     callee.connect(receiver)
+    //   }
+    // }, 5000)
 
     return socket
   }
@@ -135,7 +137,7 @@ class PeerConn {
   }
 
   // * connect to the other Party
-  connect() {
+  connect(receiver) {
     //* handle offer data for the recipient
     this.socket.on('offer', (data) => {
       //* set local and remote sdp and emit answer
@@ -173,7 +175,11 @@ class PeerConn {
 
       if (this.initiator) {
         //* call read file
-        this.readPeerFileStream()
+        sortedFiles.forEach((file) => {
+          if (file.name.split('_').at(1) === receiver) {
+            this.readPeerFileStream('./file_exchange - Copy/sendData/' + file.name, file.name)
+          }
+        })
       }
     })
 
@@ -181,9 +187,10 @@ class PeerConn {
     this.peer.on('data', data => {
       //* got a data channel message
       if (this.initiator) {
+        // console.log('got a message from peer: ' + data)
         const ack = JSON.parse(data)
-        console.log('got a message from peer: ' + data)
         sortedFiles = sortedFiles.filter(file => file.name !== ack.fileName)
+        this.deleteFileFromFs('./file_exchange/sendData/' + ack.fileName)
         // console.log('got a message from peer: ')
       } else {
         // console.log('got a message from peer: ' + data)
@@ -222,15 +229,15 @@ class PeerConn {
     })
   }
 
-  readPeerFileStream() {
-    const readerStream = createReadStream(path.join(__dirname, 'file_exchange - Copy/sendData/', sortedFiles[0].name), 'UTF8')
+  readPeerFileStream(path, fileName) {
+    const readerStream = createReadStream(path, 'UTF8')
     readerStream.on('data', (chunk) => {
       // console.log(chunk)
-      this.peer.send(chunk)
+      this.peer.send(JSON.stringify({ fileName: fileName, chunk: chunk }))
     })
 
     readerStream.on('end', function () {
-      console.log('finished with reading (Stream API)')
+      // console.log('finished with reading (Stream API)')
     })
 
     readerStream.on('error', function (err) {
@@ -272,11 +279,21 @@ class PeerConn {
       console.log(err.stack)
     })
 
-    //* after successfully write the file disconnect peer connection
+    // * after successfully write the file disconnect peer connection
     // this.peer.destroy()
     // this.socket.disconnect()
     // //* and Exit
     // setTimeout(() => process.exit(), 50)
+  }
+
+  deleteFileFromFs(path) {
+    unlink(path, (err) => {
+      if (err) {
+        console.error(err)
+        // return
+      }
+      // console.log(`${path} was deleted`)
+    })
   }
 }
 
@@ -290,6 +307,11 @@ new SocketInstance().newSocket(true, sender)
 //   // const callee = new PeerConn(false, socket)
 //   // callee.connect()
 // }
+
+setTimeout(() => {
+  // sortedFiles.forEach(file => console.log(file.name))
+  console.log(sortedFiles.length)
+}, 10000)
 
 // ? node Client.js rec dar mou
 // ? node Client.js init mou

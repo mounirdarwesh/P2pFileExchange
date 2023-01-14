@@ -196,7 +196,7 @@ class PeerConn {
       } else {
         // console.log('got a message from peer: ' + data)
         const gotFromPeer = JSON.parse(data)
-        this.peer.send(gotFromPeer.fileName)
+        this.peer.send(JSON.stringify({ fileName: gotFromPeer.fileName }))
         //* call write file
         this.writePeerFileStream(gotFromPeer, 'file_exchange - Copy/receiveData/')
       }
