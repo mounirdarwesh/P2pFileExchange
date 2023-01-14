@@ -38,17 +38,47 @@ function readAndSortFolder (folderPath) {
     })
   }
   fileObjs.sort((a, b) => {
-    return a.mtime - b.mtime
+    return Number(a.name.split('_').at(1)) - Number(b.name.split('_').at(1)) || a.mtime - b.mtime
+
+    // if (Number(a.name.split('_').at(1)) > Number(b.name.split('_').at(1))) {
+    //   return 1
+    // }
+    // if (Number(a.name.split('_').at(1)) < Number(b.name.split('_').at(1))) {
+    //   return -1
+    // }
+    // if (a.mtime > b.mtime) {
+    //   return 1
+    // }
+    // if (a.mtime < b.mtime) {
+    //   return -1
+    // }
+    // return 0
+    // fileObjs = a.name.split('_').at(1) > b.name.split('_').at(1)
+    // return a.mtime - b.mtime
   })
+  // fileObjs.sort((a, b) => {
+  //   return a.mtime - b.mtime
+  // })
 
   return fileObjs
 }
+
 const sortedFiles = readAndSortFolder(path.join(__dirname, 'file_exchange'))
 console.log(sortedFiles)
 console.log(sortedFiles.length)
 
-const receiver = sortedFiles[0].name.split('_').at(1)
-console.log(receiver)
+console.log(10001.0 > 4714.0)
+// const receiver = sortedFiles[0].name.split('_').at(1)
+// console.log(receiver)
+
+// fs.watch(path.join(__dirname, 'file_exchange'), (eventType, filename) => {
+//   console.log('\nThe file', filename, 'was modified!')
+//   console.log('The type of change was:', eventType)
+
+//   sortedFiles = readAndSortFolder(path.join(__dirname, 'file_exchange'))
+//   console.log(sortedFiles[0])
+//   console.log(sortedFiles.length)
+// })
 
 /*
 In the context of WebRTC, it is normal to establish a peer-to-peer (P2P) connection, send a file, and then close the connection. This is known as a "data channel" and is one of the key features of WebRTC. It allows for the efficient transfer of large amounts of data without the need for a dedicated server.
@@ -59,28 +89,28 @@ It depends on the use case and requirement, which method would be more appropria
 ______________________________________________________________________________
 In the context of WebRTC, it is common to establish a peer-to-peer (P2P) connection and then use that connection to send files or other data. It is not necessary to close the connection after sending each file, as doing so would add additional latency and overhead. Instead, it is more efficient to keep the connection open and reuse it for subsequent file transfers or other data. Additionally, keeping the connection open can be beneficial for real-time communication applications as it avoid the overhead of initiating a new connection.
 */
-// Create an array to hold the data channels
-const dataChannelPool = []
+// // Create an array to hold the data channels
+// const dataChannelPool = []
 
-// Function to create a new data channel and add it to the pool
-function createAndPoolDataChannel (peerConnection) {
-  // Create a new data channel
-  const dataChannel = peerConnection.createDataChannel('myDataChannel')
-  // Add the data channel to the pool
-  dataChannelPool.push(dataChannel)
-  return dataChannel
-}
+// // Function to create a new data channel and add it to the pool
+// function createAndPoolDataChannel (peerConnection) {
+//   // Create a new data channel
+//   const dataChannel = peerConnection.createDataChannel('myDataChannel')
+//   // Add the data channel to the pool
+//   dataChannelPool.push(dataChannel)
+//   return dataChannel
+// }
 
-// Function to retrieve a data channel from the pool
-function getDataChannelFromPool () {
-  // Check if there are any data channels available in the pool
-  if (dataChannelPool.length > 0) {
-    return dataChannelPool.shift()
-  } else {
-    // Create a new data channel if none are available in the pool
-    return createAndPoolDataChannel(peerConnection)
-  }
-}
+// // Function to retrieve a data channel from the pool
+// function getDataChannelFromPool () {
+//   // Check if there are any data channels available in the pool
+//   if (dataChannelPool.length > 0) {
+//     return dataChannelPool.shift()
+//   } else {
+//     // Create a new data channel if none are available in the pool
+//     return createAndPoolDataChannel(peerConnection)
+//   }
+// }
 
 // const sortedFiles = []
 // const getSortedFiles = async (dir) => {

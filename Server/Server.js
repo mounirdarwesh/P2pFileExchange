@@ -80,9 +80,9 @@ io.on('connection', client => {
   NUM++
   console.log('a Client has Joined, # of Online Users ' + NUM)
 
-  client.on('message', (data) => {
-    io.to(users.get(receiver)).emit('message', data)
-  })
+  // client.on('message', (data) => {
+  //   io.to(users.get(receiver)).emit('message', data)
+  // })
 
   client.on('get_receiver', (data) => {
     // io.to(users.get(receiver)).emit('message', data)
@@ -98,14 +98,14 @@ io.on('connection', client => {
 
   //* Fired when the Sender send Offer
   client.on('offer', (data) => {
-    io.to(data.to).emit('offer', data)
-    console.log(data)
+    io.to(users.get(receiver)).emit('offer', data)
+    // console.log(data)
   })
 
   //* Fired when the recipient send Answer back
   client.on('answer', (data) => {
     // * sometimes the socket id is not sent ( undefined ) (solved)
-    io.to(users.get(receiver)).emit('answer', data)
+    io.to(data.to).emit('answer', data)
   })
 
   //* if any Client disconnect, decrease the Number of online User and tell other Users
