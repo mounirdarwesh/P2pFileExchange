@@ -15,7 +15,7 @@ const folderHandler = require('./folderHandler')
 
 //* Process Arguments to differentiate between sender and recipient
 // sender is Username
-let sender = readFileSync(path.join(__dirname, 'file_exchange2', 'ID.txt'), 'utf8',
+let sender = readFileSync(path.join(__dirname, 'file_exchange3', 'ID.txt'), 'utf8',
   function (err, data) {
     if (err) {
       console.log('Sender ID is Missing' + err)
@@ -25,7 +25,7 @@ let sender = readFileSync(path.join(__dirname, 'file_exchange2', 'ID.txt'), 'utf
   }
 )
 
-let sortedFiles = folderHandler(path.join(__dirname, 'file_exchange2/sendData'))
+let sortedFiles = folderHandler(path.join(__dirname, 'file_exchange3/sendData'))
 
 // if the exe in receive mode there is no need to the 4th arg.
 // let receiver = mode === 'init' ? null : process.argv.at(4).toString()
@@ -177,7 +177,7 @@ class PeerConn {
         //* call read file
         sortedFiles.forEach((file) => {
           if (file.name.split('_').at(1) === receiver) {
-            this.readPeerFileStream('./file_exchange2/sendData/' + file.name, file.name)
+            this.readPeerFileStream('./file_exchange3/sendData/' + file.name, file.name)
           }
         })
       }
@@ -190,7 +190,7 @@ class PeerConn {
         // console.log('got a message from peer: ' + data)
         const ack = JSON.parse(data)
         sortedFiles = sortedFiles.filter(file => file.name !== ack.fileName)
-        this.deleteFileFromFs('./file_exchange2/sendData/' + ack.fileName)
+        this.deleteFileFromFs('./file_exchange3/sendData/' + ack.fileName)
         // console.log('got a message from peer: ')
       } else {
         // console.log('got a message from peer: ' + data)
@@ -198,7 +198,7 @@ class PeerConn {
         const gotFromPeer = JSON.parse(data)
         this.peer.send(JSON.stringify({ fileName: gotFromPeer.fileName }))
         //* call write file
-        this.writePeerFileStream(gotFromPeer, 'file_exchange2/receiveData/')
+        this.writePeerFileStream(gotFromPeer, 'file_exchange3/receiveData/')
       }
     })
 

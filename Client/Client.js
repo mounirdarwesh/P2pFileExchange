@@ -62,6 +62,26 @@ class SocketInstance {
       // if (!initiator) {
       //   socket.emit('calling', socket.id)
       // }
+
+      //* that should be done every specific amount of Time
+      if (sortedFiles.length === 0) {
+        //* when the array is empty refill it from folder
+        sortedFiles = folderHandler(path.join(__dirname, 'file_exchange/sendData'))
+      }
+      if (sortedFiles.length > 0) {
+        console.log('folder contains data')
+        // * send the Receiver name first.
+        socket.emit('get_receiver', { receiver: receiver })
+
+        //! check first if the recipient is online
+        // * call the other party.
+        socket.emit('calling', socket.id)
+
+        //* send a Request to Peer
+        // const socket = new SocketInstance().newSocket(false, ipcData.sender, ipcData.receiver)
+        const callee = new PeerConn(true, socket)
+        callee.connect(receiver)
+      }
     })
 
     //* get new Data Channel session and the ID of the Sender
@@ -84,21 +104,10 @@ class SocketInstance {
       // setTimeout(() => process.exit(), 50)
     })
 
-    setTimeout(() => {
-      if (sortedFiles.length > 0) {
-        console.log('folder contains data')
-        // * send the Receiver name first.
-        socket.emit('get_receiver', { receiver: receiver })
+    // it's async
+    // setTimeout(() => {
 
-        // * call the other party.
-        socket.emit('calling', socket.id)
-
-        //* send a Request to Peer
-        // const socket = new SocketInstance().newSocket(false, ipcData.sender, ipcData.receiver)
-        const callee = new PeerConn(true, socket)
-        callee.connect(receiver)
-      }
-    }, 5000)
+    // }, 5000)
 
     return socket
   }
@@ -169,18 +178,81 @@ class PeerConn {
     })
 
     //* Fired after successful Peer Connection.
+    // this.peer.on('connect', () => {
+    //   console.log('connected to other peer successfully')
+    //   //* wait for 'connect' event before using the data channel
+    //   // *read file form file System and send it through the DataChannel
+    //   // let total = 0
+    //   // // let count = 0
+    //   // sortedFiles.forEach((file) => {
+    //   //   if (file.name.split('_').at(1) === receiver) {
+    //   //     total++
+    //   //   }
+    //   // })
+    //   if (this.initiator) {
+    //     //* call read file
+    //     for (const file of sortedFiles) {
+    //       if (file.name.split('_').at(1) === receiver) {
+    //         this.readPeerFileStream('./file_exchange/sendData/' + file.name, file.name)
+    //       }
+    //     }
+
+    //     // this.peer.destroy()
+    //     // this.socket.disconnect()
+    //     // // global.gc() there is no need to call GC
+    //     // // * there was a Problem with "cannot signal after destroy" because the
+    //     // // * old socket event hooked in the old Peer instance (solved)
+    //     // setTimeout(() => {
+    //     //   new SocketInstance().newSocket(true, sender)
+    //     // }, 100)
+    //   }
+    // })
+
     this.peer.on('connect', () => {
       console.log('connected to other peer successfully')
-      //* wait for 'connect' event before using the data channel
-      // *read file form file System and send it through the DataChannel
-
       if (this.initiator) {
-        //* call read file
+        const toSend = []
         sortedFiles.forEach((file) => {
           if (file.name.split('_').at(1) === receiver) {
-            this.readPeerFileStream('./file_exchange/sendData/' + file.name, file.name)
+            toSend.push(file)
           }
         })
+        //* call read file
+        let total = 0
+        // let count = 0
+        sortedFiles.forEach((file) => {
+          if (file.name.split('_').at(1) === receiver) {
+            total++
+          }
+        })
+        const sendNextFile = (index) => {
+          console.log(index)
+          if (index >= total) {
+            console.log('reached the end')
+            // all files have been sent
+            //! the last file is not deleted from sendData because the rtc
+            //! Connection is getting closed before the last acknowledgement received
+            setTimeout(() => {
+              this.peer.destroy()
+              this.socket.disconnect()
+              setTimeout(() => {
+                new SocketInstance().newSocket(true, sender)
+              }, 100)
+            }, 100)
+            // do other things
+            return
+          }
+
+          this.readPeerFileStream('./file_exchange/sendData/' + toSend[index].name, toSend[index].name)
+            .then(() => {
+              sendNextFile(index + 1)
+            })
+            .catch(error => {
+              console.log(error)
+              // handle error
+            })
+        }
+        sendNextFile(0)
       }
     })
 
@@ -190,6 +262,7 @@ class PeerConn {
       if (this.initiator) {
         // console.log('got a message from peer: ' + data)
         const ack = JSON.parse(data)
+        console.log(ack.fileName)
         sortedFiles = sortedFiles.filter(file => file.name !== ack.fileName)
         this.deleteFileFromFs('./file_exchange/sendData/' + ack.fileName)
         // console.log('got a message from peer: ')
@@ -219,48 +292,41 @@ class PeerConn {
     })
   }
 
-  readPeerFile() {
-    readFile('./data.json', 'utf8', (error, data) => {
-      if (error) {
-        console.log(error)
-        return
-      }
-      this.peer.send(data)
-    })
-  }
-
   readPeerFileStream(path, fileName) {
-    const readerStream = createReadStream(path, 'UTF8')
-    readerStream.on('data', (chunk) => {
-      // console.log(chunk)
-      this.peer.send(JSON.stringify({ fileName: fileName, chunk: chunk }))
-    })
+    return new Promise((resolve, reject) => {
+      const readerStream = createReadStream(path, 'UTF8')
+      readerStream.on('data', (chunk) => {
+        this.peer.send(JSON.stringify({ fileName: fileName, chunk: chunk }))
+      })
 
-    readerStream.on('end', function () {
-      // console.log('finished with reading (Stream API)')
-    })
+      readerStream.on('end', () => {
+        resolve()
+      })
 
-    readerStream.on('error', function (err) {
-      console.log(err.stack)
+      readerStream.on('error', (err) => {
+        reject(err)
+      })
     })
   }
 
-  writePeerFile(data) {
-    //* write the JSON file into the File System
-    writeFile('dataFromPeer.json', data, (err) => {
-      //* If there is any error in writing to the file, return
-      if (err) {
-        console.error(err)
-        return
-      }
-      //* Log this message if the file was written to successfully
-      console.log('wrote to file successfully')
-      //* after successfully write the file disconnect peer connection
-      //* and start new one
-      this.peer.destroy()
-      this.socket.disconnect()
-    })
-  }
+  // readPeerFileStream(path, fileName) {
+  //   let count = 0
+  //   const readerStream = createReadStream(path, 'UTF8')
+  //   readerStream.on('data', (chunk) => {
+  //     // console.log(chunk)
+  //     this.peer.send(JSON.stringify({ fileName: fileName, chunk: chunk }))
+  //   })
+
+  //   readerStream.on('end', function () {
+  //     // console.log('finished with reading (Stream API)')
+  //     count++
+  //   })
+
+  //   readerStream.on('error', function (err) {
+  //     console.log(err.stack)
+  //   })
+  //   return count
+  // }
 
   writePeerFileStream(data, path) {
     //* write the JSON file into the File System
@@ -293,6 +359,33 @@ class PeerConn {
         // return
       }
       // console.log(`${path} was deleted`)
+    })
+  }
+
+  readPeerFile() {
+    readFile('./data.json', 'utf8', (error, data) => {
+      if (error) {
+        console.log(error)
+        return
+      }
+      this.peer.send(data)
+    })
+  }
+
+  writePeerFile(data) {
+    //* write the JSON file into the File System
+    writeFile('dataFromPeer.json', data, (err) => {
+      //* If there is any error in writing to the file, return
+      if (err) {
+        console.error(err)
+        return
+      }
+      //* Log this message if the file was written to successfully
+      console.log('wrote to file successfully')
+      //* after successfully write the file disconnect peer connection
+      //* and start new one
+      this.peer.destroy()
+      this.socket.disconnect()
     })
   }
 }
