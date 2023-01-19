@@ -83,25 +83,24 @@ class SocketInstance {
         // * send the Receiver name first.
         socket.emit('get_receiver', { receiver: receiver })
 
-        let online = 1
-        async function someFunction() {
-          await waitForEvent('receiverOffline')
-          online = 0
+        let online = 1;
+
+        (async () => {
+          online = await waitForEvent('receiverStatus')
           // Do something with the data
-        }
-        someFunction()
+          if (online === 1) {
+            console.log(receiver + ' ' + online)
+            // * call the other party.
+            socket.emit('calling', socket.id)
 
-        if (online === 1) {
-          console.log(receiver + ' ' + online)
-          // * call the other party.
-          socket.emit('calling', socket.id)
-
-          // TODO check first if the recipient is online
-          //* send a Request to Peer
-          // const socket = new SocketInstance().newSocket(false, ipcData.sender, ipcData.receiver)
-          const callee = new PeerConn(true, socket)
-          callee.connect(receiver)
-        }
+            // TODO check first if the recipient is online
+            //* send a Request to Peer
+            // const socket = new SocketInstance().newSocket(false, ipcData.sender, ipcData.receiver)
+            const callee = new PeerConn(true, socket)
+            callee.connect(receiver)
+          }
+        })()
+        // someFunction()
       }
     })
 

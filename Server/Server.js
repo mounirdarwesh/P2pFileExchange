@@ -88,8 +88,10 @@ io.on('connection', client => {
     // io.to(users.get(receiver)).emit('message', data)
     receiver = data.receiver
     if (!users.has(receiver)) {
-      io.to(users.get(sender)).emit('receiverOffline', 0)
+      io.to(users.get(sender)).emit('receiverStatus', 0)
       console.log('receiver ist not Online' + sender)
+    } else {
+      io.to(users.get(sender)).emit('receiverStatus', 1)
     }
     console.log(receiver + ' got the receiver from IPC')
   })
