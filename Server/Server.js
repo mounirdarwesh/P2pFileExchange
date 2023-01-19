@@ -16,7 +16,7 @@ const httpServer = createServer({
 })
 
 //* Socket.io Object
-// ! change the path
+// TODO change the path
 const io = new Server(httpServer, { /* update path */ })
 
 //* Counter for the Online Users
@@ -87,6 +87,10 @@ io.on('connection', client => {
   client.on('get_receiver', (data) => {
     // io.to(users.get(receiver)).emit('message', data)
     receiver = data.receiver
+    if (!users.has(receiver)) {
+      io.to(users.get(sender)).emit('receiverOffline', 0)
+      console.log('receiver ist not Online' + sender)
+    }
     console.log(receiver + ' got the receiver from IPC')
   })
 

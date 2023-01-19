@@ -54,6 +54,15 @@ class SocketInstance {
       // trickle: false
     })
 
+    function waitForEvent(eventName) {
+      return new Promise((resolve, reject) => {
+        socket.on(eventName, (data) => {
+          console.log('receiver is not ONlINE' + data)
+          resolve(data)
+        })
+      })
+    }
+
     //* on Connect event
     socket.on('connect', (client) => {
       console.log(`connected to WebSocket with id ${socket.id}`)
@@ -63,6 +72,7 @@ class SocketInstance {
       //   socket.emit('calling', socket.id)
       // }
 
+      // TODO let this periodically happens
       //* that should be done every specific amount of Time
       if (sortedFiles.length === 0) {
         //* when the array is empty refill it from folder
@@ -73,14 +83,25 @@ class SocketInstance {
         // * send the Receiver name first.
         socket.emit('get_receiver', { receiver: receiver })
 
-        //! check first if the recipient is online
-        // * call the other party.
-        socket.emit('calling', socket.id)
+        let online = 1
+        async function someFunction() {
+          await waitForEvent('receiverOffline')
+          online = 0
+          // Do something with the data
+        }
+        someFunction()
 
-        //* send a Request to Peer
-        // const socket = new SocketInstance().newSocket(false, ipcData.sender, ipcData.receiver)
-        const callee = new PeerConn(true, socket)
-        callee.connect(receiver)
+        if (online === 1) {
+          console.log(receiver + ' ' + online)
+          // * call the other party.
+          socket.emit('calling', socket.id)
+
+          // TODO check first if the recipient is online
+          //* send a Request to Peer
+          // const socket = new SocketInstance().newSocket(false, ipcData.sender, ipcData.receiver)
+          const callee = new PeerConn(true, socket)
+          callee.connect(receiver)
+        }
       }
     })
 
