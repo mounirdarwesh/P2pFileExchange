@@ -34,7 +34,7 @@ let sortedFiles = folderHandler(path.join(__dirname, 'file_exchange2/sendData'))
 class SocketInstance {
   //* Instantiate new socket.io connection
   newSocket(initiator, sender) {
-    const receiver = sortedFiles[0].name.split('_').at(1)
+    const receiver = sortedFiles.length === 0 ? null : sortedFiles[0].name.split('_').at(1)
     // * new secure Socket.io instance with Client side Certificate for more Security
     // * and Authenticity and Token as a Client Password.
     const socket = io('https://localhost:3000', {

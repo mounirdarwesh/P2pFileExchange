@@ -2,7 +2,7 @@
 
 /* eslint-disable object-shorthand */
 /* eslint-disable space-before-function-paren */
-const { unlink, readFileSync, readFile, writeFile, createReadStream, createWriteStream } = require('fs')
+const { renameSync, unlink, readFileSync, readFile, writeFile, createReadStream, createWriteStream } = require('fs')
 const { io } = require('socket.io-client')
 const Peer = require('simple-peer')
 const wrtc = require('wrtc')
@@ -27,6 +27,7 @@ let sender = readFileSync(path.join(__dirname, 'file_exchange', 'ID.txt'), 'utf8
 
 let sortedFiles = folderHandler(path.join(__dirname, 'file_exchange/sendData'))
 console.log(sortedFiles.length)
+const offlineUserData = []
 
 // if the exe in receive mode there is no need to the 4th arg.
 // let receiver = mode === 'init' ? null : process.argv.at(4).toString()
@@ -35,7 +36,7 @@ console.log(sortedFiles.length)
 class SocketInstance {
   //* Instantiate new socket.io connection
   newSocket(initiator, sender) {
-    const receiver = sortedFiles[0].name.split('_').at(1)
+    let receiver = sortedFiles.length === 0 ? null : sortedFiles[0].name.split('_').at(1)
     // * new secure Socket.io instance with Client side Certificate for more Security
     // * and Authenticity and Token as a Client Password.
     const socket = io('https://localhost:3000', {
@@ -57,10 +58,25 @@ class SocketInstance {
     function waitForEvent(eventName) {
       return new Promise((resolve, reject) => {
         socket.on(eventName, (data) => {
-          console.log('receiver is not ONlINE' + data)
+          console.log('is receiver ONlINE? ' + data)
           resolve(data)
         })
       })
+    }
+
+    function moveOfflineUserData(offlineUser) {
+      sortedFiles.forEach((file) => {
+        if (file.name.split('_').at(1) === offlineUser) {
+          offlineUserData.push(file)
+          renameSync('./file_exchange/sendData/' + file.name, './file_exchange/offlineReceiver/' + file.name, (err) => {
+            if (err) {
+              throw err
+            }
+            console.log('File moved successfully!')
+          })
+        }
+      })
+      sortedFiles = sortedFiles.filter(file => file.name.split('_').at(1) !== offlineUser)
     }
 
     //* on Connect event
@@ -72,36 +88,47 @@ class SocketInstance {
       //   socket.emit('calling', socket.id)
       // }
 
+      const retry = () => {
       // TODO let this periodically happens
       //* that should be done every specific amount of Time
-      if (sortedFiles.length === 0) {
-        //* when the array is empty refill it from folder
-        sortedFiles = folderHandler(path.join(__dirname, 'file_exchange/sendData'))
+        if (sortedFiles.length > 0) {
+          receiver = sortedFiles[0].name.split('_').at(1)
+          console.log('folder contains data')
+          // * send the Receiver name first.
+          socket.emit('get_receiver', { receiver: receiver })
+          // ? without the semicolon the IIFE will be assigned to online var.
+          let online = true;
+          //* Immediately invoked function expression (IIFE)
+          (async () => {
+            online = await waitForEvent('receiverStatus')
+            // Do something with the data
+            if (online) {
+              console.log(receiver + ' ' + online)
+              // * call the other party.
+              socket.emit('calling', socket.id)
+
+              // TODO check first if the recipient is online
+              //* send a Request to Peer
+              // const socket = new SocketInstance().newSocket(false, ipcData.sender, ipcData.receiver)
+              const callee = new PeerConn(true, socket)
+              callee.connect(receiver)
+            } else {
+              moveOfflineUserData(receiver)
+              console.log(`User  ${receiver} is Offline`)
+            }
+            if (sortedFiles.length === 0) {
+              //* when the array is empty refill it from folder
+              sortedFiles = folderHandler(path.join(__dirname, 'file_exchange/sendData'))
+            }
+          })()
+        }
       }
-      if (sortedFiles.length > 0) {
-        console.log('folder contains data')
-        // * send the Receiver name first.
-        socket.emit('get_receiver', { receiver: receiver })
 
-        let online = 1;
+      retry()
 
-        (async () => {
-          online = await waitForEvent('receiverStatus')
-          // Do something with the data
-          if (online === 1) {
-            console.log(receiver + ' ' + online)
-            // * call the other party.
-            socket.emit('calling', socket.id)
-
-            // TODO check first if the recipient is online
-            //* send a Request to Peer
-            // const socket = new SocketInstance().newSocket(false, ipcData.sender, ipcData.receiver)
-            const callee = new PeerConn(true, socket)
-            callee.connect(receiver)
-          }
-        })()
-        // someFunction()
-      }
+      setInterval(() => {
+        retry()
+      }, 10000)
     })
 
     //* get new Data Channel session and the ID of the Sender
@@ -123,11 +150,6 @@ class SocketInstance {
       console.log(err.message)
       // setTimeout(() => process.exit(), 50)
     })
-
-    // it's async
-    // setTimeout(() => {
-
-    // }, 5000)
 
     return socket
   }
@@ -238,13 +260,7 @@ class PeerConn {
           }
         })
         //* call read file
-        let total = 0
-        // let count = 0
-        sortedFiles.forEach((file) => {
-          if (file.name.split('_').at(1) === receiver) {
-            total++
-          }
-        })
+        const total = toSend.length
         const sendNextFile = (index) => {
           console.log(index)
           if (index >= total) {
@@ -420,11 +436,6 @@ new SocketInstance().newSocket(true, sender)
 //   // const callee = new PeerConn(false, socket)
 //   // callee.connect()
 // }
-
-setTimeout(() => {
-  // sortedFiles.forEach(file => console.log(file.name))
-  console.log(sortedFiles.length)
-}, 10000)
 
 // ? node Client.js rec dar mou
 // ? node Client.js init mou
