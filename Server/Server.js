@@ -29,7 +29,6 @@ const users = new Map()
 //* Middleware to handle Logging and Authentication
 io.use((client, next) => {
   const sender = client.handshake.auth.sender
-  // const receiver = client.handshake.auth.receiver
 
   //* if username already exist in the hashmap.
   if (users.has(sender)) {
@@ -37,15 +36,6 @@ io.use((client, next) => {
     next(err)
     console.log('Username is already Exist')
   }
-
-  //* disconnect Client if the Receiver name is not correct or Offline
-  // if (!users.has(receiver) && client.handshake.auth.initiator === false) {
-  //   const err = new Error('Receiver name is not correct or he is Offline.')
-  //   next(err)
-  //   console.log('Recipient dose not exist or offline.')
-  //   // TODO fallback in case the recipient dose not exist or is not Online
-  //   // it should not happen as long as the recipient requested the Data
-  // }
 
   //* disconnect Client if the Credentials wrong
   //* that ensure the Authenticity of the Client, because DTLS provides just encryption and integrity
@@ -61,7 +51,7 @@ io.use((client, next) => {
 io.on('connection', client => {
   //* username of the sender and recipient
   const sender = client.handshake.auth.sender
-  let receiver // = client.handshake.auth.receiver
+  let receiver
 
   //* save the Username and his ID in the HashMap
   if (!users.has(sender)) {
@@ -80,20 +70,16 @@ io.on('connection', client => {
   NUM++
   console.log('a Client has Joined, # of Online Users ' + NUM)
 
-  // client.on('message', (data) => {
-  //   io.to(users.get(receiver)).emit('message', data)
-  // })
-
   client.on('get_receiver', (data) => {
-    // io.to(users.get(receiver)).emit('message', data)
     receiver = data.receiver
+    //* check from the Hash Map if the Receiver Online
     if (!users.has(receiver)) {
       io.to(users.get(sender)).emit('receiverStatus', false)
       console.log(`this Receiver ${receiver} is not Online, this Sender ${sender} `)
     } else {
+      console.log(`this Receiver ${receiver} is Online, this Sender ${sender} `)
       io.to(users.get(sender)).emit('receiverStatus', true)
     }
-    console.log(receiver + ' got the receiver from IPC')
   })
 
   //* handle Calling event form the Sender and redirect it to the intended recipient
@@ -105,7 +91,6 @@ io.on('connection', client => {
   //* Fired when the Sender send Offer
   client.on('offer', (data) => {
     io.to(users.get(receiver)).emit('offer', data)
-    // console.log(data)
   })
 
   //* Fired when the recipient send Answer back
@@ -126,4 +111,4 @@ io.on('connection', client => {
 })
 
 //* Start the Server on Port 3000
-httpServer.listen(3000, () => { console.log('Server is Listening on Port 3000 🚀... ') })
+httpServer.listen(3000, () => { console.log('Server is Listening on Port 3000... ') })

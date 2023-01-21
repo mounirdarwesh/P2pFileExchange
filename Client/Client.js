@@ -2,7 +2,7 @@
 
 /* eslint-disable object-shorthand */
 /* eslint-disable space-before-function-paren */
-const { renameSync, unlink, readFileSync, readFile, writeFile, createReadStream, createWriteStream } = require('fs')
+const { renameSync, unlink, readFileSync, createReadStream, createWriteStream } = require('fs')
 const { io } = require('socket.io-client')
 const Peer = require('simple-peer')
 const wrtc = require('wrtc')
@@ -10,11 +10,7 @@ const path = require('node:path')
 const turnCredential = require('./turnCredential')
 const folderHandler = require('./folderHandler')
 
-//* get mode form arguments, weather sender or recipient
-// let mode = process.argv.at(2)
-
-//* Process Arguments to differentiate between sender and recipient
-// sender is Username
+//* read the ID of the Sender from the File System
 let sender = readFileSync(path.join(__dirname, 'file_exchange', 'ID.txt'), 'utf8',
   function (err, data) {
     if (err) {
@@ -25,12 +21,12 @@ let sender = readFileSync(path.join(__dirname, 'file_exchange', 'ID.txt'), 'utf8
   }
 )
 
+//* read the Files from sendData Folder that should be sent
 let sortedFiles = folderHandler(path.join(__dirname, 'file_exchange/sendData'))
-console.log(sortedFiles.length)
+// console.log(sortedFiles.length)
+//* Array to save Offline Peers Files
+// TODO check periodically if the peer in online
 const offlineUserData = []
-
-// if the exe in receive mode there is no need to the 4th arg.
-// let receiver = mode === 'init' ? null : process.argv.at(4).toString()
 
 //* Class to create new WebSocket Connection
 class SocketInstance {
@@ -55,15 +51,17 @@ class SocketInstance {
       // trickle: false
     })
 
+    //* this function make an event return a Promise.
     function waitForEvent(eventName) {
       return new Promise((resolve, reject) => {
         socket.on(eventName, (data) => {
-          console.log('is receiver ONlINE? ' + data)
+          console.log(`User ${receiver} is Online: ${data}`)
           resolve(data)
         })
       })
     }
 
+    //* if the Peer Offline, his Files should be moved to Another Array and Folder
     function moveOfflineUserData(offlineUser) {
       sortedFiles.forEach((file) => {
         if (file.name.split('_').at(1) === offlineUser) {
@@ -82,62 +80,53 @@ class SocketInstance {
     //* on Connect event
     socket.on('connect', (client) => {
       console.log(`connected to WebSocket with id ${socket.id}`)
-      //* if its the Sender, Call the other Peer and give him the ID of the Sender
-      //* to talk him back
-      // if (!initiator) {
-      //   socket.emit('calling', socket.id)
-      // }
 
-      const retry = () => {
-      // TODO let this periodically happens
-      //* that should be done every specific amount of Time
+      const transfer = () => {
+        // TODO let this periodically happens
+        //* if there is file to be transfer
         if (sortedFiles.length > 0) {
+          //* get the receiver ID
           receiver = sortedFiles[0].name.split('_').at(1)
-          console.log('folder contains data')
-          // * send the Receiver name first.
+
+          // * send the Receiver name first,to get his socket ID and to check if he is Online.
           socket.emit('get_receiver', { receiver: receiver })
+
           // ? without the semicolon the IIFE will be assigned to online var.
           let online = true;
           //* Immediately invoked function expression (IIFE)
           (async () => {
+            //* get from Signaling Server if the Receiver Online
             online = await waitForEvent('receiverStatus')
-            // Do something with the data
             if (online) {
-              console.log(receiver + ' ' + online)
-              // * call the other party.
+              // * call the other Receiver.
               socket.emit('calling', socket.id)
 
-              // TODO check first if the recipient is online
-              //* send a Request to Peer
-              // const socket = new SocketInstance().newSocket(false, ipcData.sender, ipcData.receiver)
+              //* init a new WebRTC Connection to the Receiver
               const callee = new PeerConn(true, socket)
               callee.connect(receiver)
             } else {
+              //* the Peer is Offline
               moveOfflineUserData(receiver)
-              console.log(`User  ${receiver} is Offline`)
-            }
-            if (sortedFiles.length === 0) {
-              //* when the array is empty refill it from folder
-              sortedFiles = folderHandler(path.join(__dirname, 'file_exchange/sendData'))
             }
           })()
         }
+        if (sortedFiles.length === 0) {
+          //* when the array is empty refill it from folder
+          sortedFiles = folderHandler(path.join(__dirname, 'file_exchange/sendData'))
+        }
       }
 
-      retry()
-
+      transfer()
       setInterval(() => {
-        retry()
+        transfer()
       }, 10000)
     })
 
-    //* get new Data Channel session and the ID of the Sender
+    //* init a Data Channel when the Sender rings
     socket.on('calling', (callerID) => {
       console.log('Ringing')
-      // if (!initiator) {
       const callee = new PeerConn(false, socket, callerID)
       callee.connect()
-      // }
     })
 
     //* if the Connection form the Server side has been disconnected
@@ -148,7 +137,7 @@ class SocketInstance {
     //* check before if the socket connected without errors
     socket.on('connect_error', (err) => {
       console.log(err.message)
-      // setTimeout(() => process.exit(), 50)
+      //! setTimeout(() => process.exit(), 50)
     })
 
     return socket
@@ -219,40 +208,11 @@ class PeerConn {
       }
     })
 
-    //* Fired after successful Peer Connection.
-    // this.peer.on('connect', () => {
-    //   console.log('connected to other peer successfully')
-    //   //* wait for 'connect' event before using the data channel
-    //   // *read file form file System and send it through the DataChannel
-    //   // let total = 0
-    //   // // let count = 0
-    //   // sortedFiles.forEach((file) => {
-    //   //   if (file.name.split('_').at(1) === receiver) {
-    //   //     total++
-    //   //   }
-    //   // })
-    //   if (this.initiator) {
-    //     //* call read file
-    //     for (const file of sortedFiles) {
-    //       if (file.name.split('_').at(1) === receiver) {
-    //         this.readPeerFileStream('./file_exchange/sendData/' + file.name, file.name)
-    //       }
-    //     }
-
-    //     // this.peer.destroy()
-    //     // this.socket.disconnect()
-    //     // // global.gc() there is no need to call GC
-    //     // // * there was a Problem with "cannot signal after destroy" because the
-    //     // // * old socket event hooked in the old Peer instance (solved)
-    //     // setTimeout(() => {
-    //     //   new SocketInstance().newSocket(true, sender)
-    //     // }, 100)
-    //   }
-    // })
-
     this.peer.on('connect', () => {
       console.log('connected to other peer successfully')
+      //* if its the Sender
       if (this.initiator) {
+        //* move all receiver file to another Array to iterate over it
         const toSend = []
         sortedFiles.forEach((file) => {
           if (file.name.split('_').at(1) === receiver) {
@@ -261,21 +221,19 @@ class PeerConn {
         })
         //* call read file
         const total = toSend.length
+        //* recursive function to send the file sequentially and at the end close the Connection
         const sendNextFile = (index) => {
-          console.log(index)
           if (index >= total) {
-            console.log('reached the end')
             // all files have been sent
-            //! the last file is not deleted from sendData because the rtc
+            //! (solved) the last file is not deleted from sendData because the rtc
             //! Connection is getting closed before the last acknowledgement received
             setTimeout(() => {
               this.peer.destroy()
               this.socket.disconnect()
-              setTimeout(() => {
-                new SocketInstance().newSocket(true, sender)
-              }, 100)
+              // setTimeout(() => {
+              //   new SocketInstance().newSocket(true, sender)
+              // }, 200)
             }, 100)
-            // do other things
             return
           }
 
@@ -285,7 +243,6 @@ class PeerConn {
             })
             .catch(error => {
               console.log(error)
-              // handle error
             })
         }
         sendNextFile(0)
@@ -296,18 +253,15 @@ class PeerConn {
     this.peer.on('data', data => {
       //* got a data channel message
       if (this.initiator) {
-        // console.log('got a message from peer: ' + data)
         const ack = JSON.parse(data)
         console.log(ack.fileName)
         sortedFiles = sortedFiles.filter(file => file.name !== ack.fileName)
         this.deleteFileFromFs('./file_exchange/sendData/' + ack.fileName)
-        // console.log('got a message from peer: ')
       } else {
-        // console.log('got a message from peer: ' + data)
         const gotFromPeer = JSON.parse(data)
         this.peer.send(JSON.stringify({ fileName: gotFromPeer.fileName }))
         //* call write file
-        this.writePeerFileStream(gotFromPeer, 'file_exchange - Copy/receiveData/')
+        this.writePeerFileStream(gotFromPeer, 'file_exchange/receiveData/')
       }
     })
 
@@ -315,16 +269,14 @@ class PeerConn {
     this.peer.on('close', () => {
       console.log('WebRTC DataChannel connection is closed ')
 
-      if (this.initiator) {
-        this.peer.destroy()
-        this.socket.disconnect()
-        // global.gc() there is no need to call GC
-        // * there was a Problem with "cannot signal after destroy" because the
-        // * old socket event hooked in the old Peer instance (solved)
-        setTimeout(() => {
-          new SocketInstance().newSocket(true, sender)
-        }, 100)
-      }
+      this.peer.destroy()
+      this.socket.disconnect()
+      // global.gc() there is no need to call GC
+      // * there was a Problem with "cannot signal after destroy" because the
+      // * old socket event hooked in the old Peer instance (solved)
+      setTimeout(() => {
+        new SocketInstance().newSocket(true, sender)
+      }, 100)
     })
   }
 
@@ -345,25 +297,6 @@ class PeerConn {
     })
   }
 
-  // readPeerFileStream(path, fileName) {
-  //   let count = 0
-  //   const readerStream = createReadStream(path, 'UTF8')
-  //   readerStream.on('data', (chunk) => {
-  //     // console.log(chunk)
-  //     this.peer.send(JSON.stringify({ fileName: fileName, chunk: chunk }))
-  //   })
-
-  //   readerStream.on('end', function () {
-  //     // console.log('finished with reading (Stream API)')
-  //     count++
-  //   })
-
-  //   readerStream.on('error', function (err) {
-  //     console.log(err.stack)
-  //   })
-  //   return count
-  // }
-
   writePeerFileStream(data, path) {
     //* write the JSON file into the File System
     const writerStream = createWriteStream(path + data.fileName)
@@ -380,62 +313,16 @@ class PeerConn {
     writerStream.on('error', (err) => {
       console.log(err.stack)
     })
-
-    // //* after successfully write the file disconnect peer connection
-    // this.peer.destroy()
-    // this.socket.disconnect()
-    // //* and Exit
-    // setTimeout(() => process.exit(), 50)
   }
 
   deleteFileFromFs(path) {
     unlink(path, (err) => {
       if (err) {
         console.error(err)
-        // return
       }
-      // console.log(`${path} was deleted`)
-    })
-  }
-
-  readPeerFile() {
-    readFile('./data.json', 'utf8', (error, data) => {
-      if (error) {
-        console.log(error)
-        return
-      }
-      this.peer.send(data)
-    })
-  }
-
-  writePeerFile(data) {
-    //* write the JSON file into the File System
-    writeFile('dataFromPeer.json', data, (err) => {
-      //* If there is any error in writing to the file, return
-      if (err) {
-        console.error(err)
-        return
-      }
-      //* Log this message if the file was written to successfully
-      console.log('wrote to file successfully')
-      //* after successfully write the file disconnect peer connection
-      //* and start new one
-      this.peer.destroy()
-      this.socket.disconnect()
     })
   }
 }
 
-//* entry Point of the Sender
-// if (mode === 'init') {
+//* entry Point
 new SocketInstance().newSocket(true, sender)
-// }
-//* entry Point of the Recipient
-// if (mode === 'rec') {
-//   // const socket = new SocketInstance().newSocket(false)
-//   // const callee = new PeerConn(false, socket)
-//   // callee.connect()
-// }
-
-// ? node Client.js rec dar mou
-// ? node Client.js init mou
