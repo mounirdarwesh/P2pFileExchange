@@ -61,6 +61,41 @@ class SocketInstance {
       })
     }
 
+    function transfer () {
+      // TODO let this periodically happens
+      //* if there is file to be transfer
+      if (sortedFiles.length > 0) {
+        //* get the receiver ID
+        receiver = sortedFiles[0].name.split('_').at(1)
+
+        // * send the Receiver name first,to get his socket ID and to check if he is Online.
+        socket.emit('get_receiver', { receiver: receiver })
+
+        // ? without the semicolon the IIFE will be assigned to online var.
+        let online = true;
+        //* Immediately invoked function expression (IIFE)
+        (async () => {
+          //* get from Signaling Server if the Receiver Online
+          online = await waitForEvent('receiverStatus')
+          if (online) {
+            // * call the other Receiver.
+            socket.emit('calling', socket.id)
+
+            //* init a new WebRTC Connection to the Receiver
+            const callee = new PeerConn(true, socket)
+            callee.connect(receiver)
+          } else {
+            //* the Peer is Offline
+            moveOfflineUserData(receiver)
+          }
+        })()
+      }
+      if (sortedFiles.length === 0) {
+        //* when the array is empty refill it from folder
+        sortedFiles = folderHandler(path.join(__dirname, 'file_exchange3/sendData'))
+      }
+    }
+
     //* if the Peer Offline, his Files should be moved to Another Array and Folder
     function moveOfflineUserData(offlineUser) {
       sortedFiles.forEach((file) => {
@@ -80,41 +115,6 @@ class SocketInstance {
     //* on Connect event
     socket.on('connect', (client) => {
       console.log(`connected to WebSocket with id ${socket.id}`)
-
-      const transfer = () => {
-      // TODO let this periodically happens
-      //* if there is file to be transfer
-        if (sortedFiles.length > 0) {
-          //* get the receiver ID
-          receiver = sortedFiles[0].name.split('_').at(1)
-
-          // * send the Receiver name first,to get his socket ID and to check if he is Online.
-          socket.emit('get_receiver', { receiver: receiver })
-
-          // ? without the semicolon the IIFE will be assigned to online var.
-          let online = true;
-          //* Immediately invoked function expression (IIFE)
-          (async () => {
-            //* get from Signaling Server if the Receiver Online
-            online = await waitForEvent('receiverStatus')
-            if (online) {
-              // * call the other Receiver.
-              socket.emit('calling', socket.id)
-
-              //* init a new WebRTC Connection to the Receiver
-              const callee = new PeerConn(true, socket)
-              callee.connect(receiver)
-            } else {
-              //* the Peer is Offline
-              moveOfflineUserData(receiver)
-            }
-          })()
-        }
-        if (sortedFiles.length === 0) {
-          //* when the array is empty refill it from folder
-          sortedFiles = folderHandler(path.join(__dirname, 'file_exchange3/sendData'))
-        }
-      }
 
       transfer()
       setInterval(() => {
