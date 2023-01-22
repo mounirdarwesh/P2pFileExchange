@@ -31,7 +31,7 @@ const offlineUserData = []
 //* Class to create new WebSocket Connection
 class SocketInstance {
   //* Instantiate new socket.io connection
-  newSocket(initiator, sender) {
+  newSocket(sender) {
     let receiver = sortedFiles.length === 0 ? null : sortedFiles[0].name.split('_').at(1)
     // * new secure Socket.io instance with Client side Certificate for more Security
     // * and Authenticity and Token as a Client Password.
@@ -40,9 +40,9 @@ class SocketInstance {
         // ! token should be given as a Parameter
         // ? validate the input.
         token: 'V@6wcY1Vh8l78zLMZ126',
-        sender: sender,
+        sender: sender
         // receiver: receiver,
-        initiator: initiator
+        // initiator: initiator
       },
       ca: readFileSync(path.join(__dirname, 'certificate/cert.pem')),
       cert: readFileSync(path.join(__dirname, 'certificate/client-cert.pem')),
@@ -276,7 +276,7 @@ class PeerConn {
       // * there was a Problem with "cannot signal after destroy" because the
       // * old socket event hooked in the old Peer instance (solved)
       setTimeout(() => {
-        new SocketInstance().newSocket(true, sender)
+        new SocketInstance().newSocket(sender)
       }, 100)
     })
   }
@@ -326,4 +326,4 @@ class PeerConn {
 }
 
 //* entry Point
-new SocketInstance().newSocket(true, sender)
+new SocketInstance().newSocket(sender)
