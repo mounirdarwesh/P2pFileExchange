@@ -2,13 +2,14 @@
 
 /* eslint-disable object-shorthand */
 /* eslint-disable space-before-function-paren */
-const { renameSync, unlink, readFileSync, createReadStream, createWriteStream } = require('fs')
+const { unlink, readFileSync, createReadStream, createWriteStream } = require('fs')
 const { io } = require('socket.io-client')
 const Peer = require('simple-peer')
 const wrtc = require('wrtc')
 const path = require('node:path')
 const turnCredential = require('./turnCredential')
 const folderHandler = require('./folderHandler')
+require('dotenv').config()
 
 //* read the ID of the Sender from the File System
 let sender = readFileSync(path.join(__dirname, 'file_exchange', 'ID.txt'), 'utf8',
@@ -39,7 +40,7 @@ class SocketInstance {
       auth: {
         // ! token should be given as a Parameter
         // ? validate the input.
-        token: 'V@6wcY1Vh8l78zLMZ126',
+        token: process.env.SECRET_KEY,
         sender: sender
         // receiver: receiver,
         // initiator: initiator
@@ -85,7 +86,7 @@ class SocketInstance {
             const callee = new PeerConn(true, socket)
             callee.connect(receiver)
           } else {
-            //* the Peer is Offline 
+            //* the Peer is Offline
             sortedFiles = sortedFiles.filter(file => file.name.split('_').at(1) !== receiver)
             // moveOfflineUserData(receiver)
           }
@@ -121,7 +122,7 @@ class SocketInstance {
 
       setInterval(() => {
         transfer()
-      }, 1000)
+      }, 2000)
       // TODO handle offline Peer Data, it will be handled in termininfo
     })
 
@@ -238,7 +239,7 @@ class PeerConn {
               // setTimeout(() => {
               //   new SocketInstance().newSocket(true, sender)
               // }, 200)
-            }, 100)
+            }, 1000)
             return
           }
 

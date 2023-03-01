@@ -1,4 +1,5 @@
 const crypto = require('crypto')
+require('dotenv').config()
 
 function getTURNCredentials (name, secret) {
   const unixTimeStamp = parseInt(Date.now() / 1000) + 24 * 3600// this credential would be valid for the next 24 hours
@@ -15,4 +16,4 @@ function getTURNCredentials (name, secret) {
   }
 }
 
-module.exports = getTURNCredentials('', '3f8CKxRaESW3hSkV')
+module.exports = getTURNCredentials(process.env.TURN_USERNAME, process.env.TURN_PASSWORD)

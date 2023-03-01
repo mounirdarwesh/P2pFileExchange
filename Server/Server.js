@@ -4,6 +4,7 @@ const { readFileSync } = require('fs')
 const { createServer } = require('https')
 const { Server } = require('socket.io')
 const path = require('node:path')
+require('dotenv').config()
 
 // * create https Server with self signed Certificate
 const httpServer = createServer({
@@ -40,7 +41,7 @@ io.use((client, next) => {
   //* disconnect Client if the Credentials wrong
   //* that ensure the Authenticity of the Client, because DTLS provides just encryption and integrity
   //* CIA Principe
-  if (client.handshake.auth.token !== 'V@6wcY1Vh8l78zLMZ126') {
+  if (client.handshake.auth.token !== process.env.SECRET_KEY) {
     const err = new Error('Wrong Credentials.')
     next(err)
   }
