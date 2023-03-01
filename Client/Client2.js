@@ -26,7 +26,7 @@ let sortedFiles = folderHandler(path.join(__dirname, 'file_exchange2/sendData'))
 // console.log(sortedFiles.length)
 //* Array to save Offline Peers Files
 // TODO check periodically if the peer in online
-const offlineUserData = []
+// const offlineUserData = []
 
 //* Class to create new WebSocket Connection
 class SocketInstance {
@@ -87,7 +87,8 @@ class SocketInstance {
             callee.connect(receiver)
           } else {
             //* the Peer is Offline
-            moveOfflineUserData(receiver)
+            sortedFiles = sortedFiles.filter(file => file.name.split('_').at(1) !== receiver)
+            // moveOfflineUserData(receiver)
           }
         })()
       }
@@ -98,20 +99,20 @@ class SocketInstance {
     }
 
     //* if the Peer Offline, his Files should be moved to Another Array and Folder
-    function moveOfflineUserData(offlineUser) {
-      sortedFiles.forEach((file) => {
-        if (file.name.split('_').at(1) === offlineUser) {
-          offlineUserData.push(file)
-          renameSync('./file_exchange2/sendData/' + file.name, './file_exchange2/offlineReceiver/' + file.name, (err) => {
-            if (err) {
-              throw err
-            }
-            console.log('File moved successfully!')
-          })
-        }
-      })
-      sortedFiles = sortedFiles.filter(file => file.name.split('_').at(1) !== offlineUser)
-    }
+    // function moveOfflineUserData(offlineUser) {
+    //   sortedFiles.forEach((file) => {
+    //     if (file.name.split('_').at(1) === offlineUser) {
+    //       offlineUserData.push(file)
+    //       renameSync('./file_exchange2/sendData/' + file.name, './file_exchange2/offlineReceiver/' + file.name, (err) => {
+    //         if (err) {
+    //           throw err
+    //         }
+    //         console.log('File moved successfully!')
+    //       })
+    //     }
+    //   })
+    //   sortedFiles = sortedFiles.filter(file => file.name.split('_').at(1) !== offlineUser)
+    // }
 
     //* on Connect event
     socket.on('connect', (client) => {
@@ -120,7 +121,7 @@ class SocketInstance {
       transfer()
       setInterval(() => {
         transfer()
-      }, 10000)
+      }, 1000)
     })
 
     //* init a Data Channel when the Sender rings
@@ -179,6 +180,8 @@ class PeerConn {
   }
 
   // * connect to the other Party
+  // ? after initiating the Object, an Offer will be directly sent
+  // ? and when the Offer received an Answer will automatically sent
   connect(receiver) {
     //* handle offer data for the recipient
     this.socket.on('offer', (data) => {
@@ -213,7 +216,7 @@ class PeerConn {
       console.log('connected to other peer successfully')
       //* if its the Sender
       if (this.initiator) {
-        //* move all receiver file to another Array to iterate over it
+        //* move all receiver file to another Array to iterate over it (for the sake of count)
         const toSend = []
         sortedFiles.forEach((file) => {
           if (file.name.split('_').at(1) === receiver) {

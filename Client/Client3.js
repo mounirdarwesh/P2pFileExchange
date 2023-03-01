@@ -26,7 +26,7 @@ let sortedFiles = folderHandler(path.join(__dirname, 'file_exchange3/sendData'))
 // console.log(sortedFiles.length)
 //* Array to save Offline Peers Files
 // TODO check periodically if the peer in online
-const offlineUserData = []
+// const offlineUserData = []
 
 //* Class to create new WebSocket Connection
 class SocketInstance {
@@ -86,7 +86,8 @@ class SocketInstance {
             callee.connect(receiver)
           } else {
             //* the Peer is Offline
-            moveOfflineUserData(receiver)
+            sortedFiles = sortedFiles.filter(file => file.name.split('_').at(1) !== receiver)
+            // moveOfflineUserData(receiver)
           }
         })()
       }
@@ -97,20 +98,20 @@ class SocketInstance {
     }
 
     //* if the Peer Offline, his Files should be moved to Another Array and Folder
-    function moveOfflineUserData(offlineUser) {
-      sortedFiles.forEach((file) => {
-        if (file.name.split('_').at(1) === offlineUser) {
-          offlineUserData.push(file)
-          renameSync('./file_exchange3/sendData/' + file.name, './file_exchange3/offlineReceiver/' + file.name, (err) => {
-            if (err) {
-              throw err
-            }
-            console.log('File moved successfully!')
-          })
-        }
-      })
-      sortedFiles = sortedFiles.filter(file => file.name.split('_').at(1) !== offlineUser)
-    }
+    // function moveOfflineUserData(offlineUser) {
+    //   sortedFiles.forEach((file) => {
+    //     if (file.name.split('_').at(1) === offlineUser) {
+    //       offlineUserData.push(file)
+    //       renameSync('./file_exchange3/sendData/' + file.name, './file_exchange3/offlineReceiver/' + file.name, (err) => {
+    //         if (err) {
+    //           throw err
+    //         }
+    //         console.log('File moved successfully!')
+    //       })
+    //     }
+    //   })
+    //   sortedFiles = sortedFiles.filter(file => file.name.split('_').at(1) !== offlineUser)
+    // }
 
     //* on Connect event
     socket.on('connect', (client) => {
@@ -119,7 +120,7 @@ class SocketInstance {
       transfer()
       setInterval(() => {
         transfer()
-      }, 10000)
+      }, 1000)
     })
 
     //* init a Data Channel when the Sender rings

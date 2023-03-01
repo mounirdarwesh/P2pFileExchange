@@ -26,7 +26,7 @@ let sortedFiles = folderHandler(path.join(__dirname, 'file_exchange/sendData'))
 // console.log(sortedFiles.length)
 //* Array to save Offline Peers Files
 // TODO check periodically if the peer in online
-const offlineUserData = []
+// const offlineUserData = []
 
 //* Class to create new WebSocket Connection
 class SocketInstance {
@@ -71,9 +71,9 @@ class SocketInstance {
         // * send the Receiver name first,to get his socket ID and to check if he is Online.
         socket.emit('get_receiver', { receiver: receiver })
 
-        // ? without the semicolon the IIFE will be assigned to online var.
+        // ! without the semicolon the IIFE will be assigned to online var.
         let online = true;
-        //* Immediately invoked function expression (IIFE)
+        //* Immediately invoked function expression (IIFE) to wait for the Status.
         (async () => {
           //* get from Signaling Server if the Receiver Online
           online = await waitForEvent('receiverStatus')
@@ -85,8 +85,9 @@ class SocketInstance {
             const callee = new PeerConn(true, socket)
             callee.connect(receiver)
           } else {
-            //* the Peer is Offline
-            moveOfflineUserData(receiver)
+            //* the Peer is Offline 
+            sortedFiles = sortedFiles.filter(file => file.name.split('_').at(1) !== receiver)
+            // moveOfflineUserData(receiver)
           }
         })()
       }
@@ -97,30 +98,31 @@ class SocketInstance {
     }
 
     //* if the Peer Offline, his Files should be moved to Another Array and Folder
-    function moveOfflineUserData(offlineUser) {
-      sortedFiles.forEach((file) => {
-        if (file.name.split('_').at(1) === offlineUser) {
-          offlineUserData.push(file)
-          renameSync('./file_exchange/sendData/' + file.name, './file_exchange/offlineReceiver/' + file.name, (err) => {
-            if (err) {
-              throw err
-            }
-            console.log('File moved successfully!')
-          })
-        }
-      })
-      sortedFiles = sortedFiles.filter(file => file.name.split('_').at(1) !== offlineUser)
-    }
+    // function moveOfflineUserData(offlineUser) {
+    //   sortedFiles.forEach((file) => {
+    //     if (file.name.split('_').at(1) === offlineUser) {
+    //       offlineUserData.push(file)
+    //       renameSync('./file_exchange/sendData/' + file.name, './file_exchange/offlineReceiver/' + file.name, (err) => {
+    //         if (err) {
+    //           throw err
+    //         }
+    //         console.log('File moved successfully!')
+    //       })
+    //     }
+    //   })
+    //   sortedFiles = sortedFiles.filter(file => file.name.split('_').at(1) !== offlineUser)
+    // }
 
     //* on Connect event
     socket.on('connect', (client) => {
       console.log(`connected to WebSocket with id ${socket.id}`)
-
+      //* start to send files
       transfer()
+
       setInterval(() => {
         transfer()
-      }, 10000)
-      // TODO handle offline Peer Data
+      }, 1000)
+      // TODO handle offline Peer Data, it will be handled in termininfo
     })
 
     //* init a Data Channel when the Sender rings
@@ -179,6 +181,8 @@ class PeerConn {
   }
 
   // * connect to the other Party
+  // ? after initiating the Object, an Offer will be directly sent
+  // ? and when the Offer received an Answer will automatically sent
   connect(receiver) {
     //* handle offer data for the recipient
     this.socket.on('offer', (data) => {

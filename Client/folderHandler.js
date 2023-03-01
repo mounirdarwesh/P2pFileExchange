@@ -4,8 +4,9 @@ const fs = require('fs')
 //* Helper function to read the contents of a Folder and the sort the files
 //* after the second part of the name and the after the timestamp
 function readAndSortFolder (folderPath) {
-  const files = fs.readdirSync(folderPath)
-
+  let files = fs.readdirSync(folderPath)
+  //* exclude files that are in Processing
+  files = files.filter(file => file.charAt(0) !== 'X')
   //* store file Properties
   const fileObjs = []
 
