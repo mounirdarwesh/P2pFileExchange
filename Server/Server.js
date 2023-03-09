@@ -5,6 +5,7 @@ const { createServer } = require('https')
 const { Server } = require('socket.io')
 const path = require('node:path')
 require('dotenv').config()
+const { RateLimiterMemory } = require('rate-limiter-flexible')
 
 // * create https Server with self signed Certificate
 const httpServer = createServer({
@@ -16,20 +17,37 @@ const httpServer = createServer({
   ]
 })
 
+//* create Rate Limiter object for every connection has per seconde 5 point to consume.
+const rateLimiter = new RateLimiterMemory(
+  {
+    points: 5, // 5 points
+    duration: 1 // per second
+  })
+
 //* Socket.io Object
 // TODO change the path
-const io = new Server(httpServer, { /* update path */ })
+const io = new Server(httpServer, { /* here to update the path */ })
 
 //* Counter for the Online Users
 let NUM = 0
 
 //* Map to manage the Online Users Entries and send Messages to specific user
-// ? DB for user Authentication.
+// ? DB for user Authentication. (Future work for every Client Certificate and Password)
 const users = new Map()
 
 //* Middleware to handle Logging and Authentication
 io.use((client, next) => {
   const sender = client.handshake.auth.sender
+
+  //* Rate limiter to Protect the Server form DDoS and brute force attacks
+  const ip = client.handshake.headers['x-real-ip'] || client.handshake.address
+  rateLimiter.consume(ip, 1)
+    .then(() => {
+      // * it will be passed to the next Middleware using the next() at the end
+    })
+    .catch(() => {
+      next(new Error('Too many requests'))
+    })
 
   //* if username already exist in the hashmap.
   if (users.has(sender)) {
@@ -64,8 +82,8 @@ io.on('connection', client => {
     console.log(key + ' = ' + value)
   }
 
-  client.on('connect', () => {
-  })
+  // client.on('connect', () => {
+  // })
 
   //* increase the Count of Online Users
   NUM++

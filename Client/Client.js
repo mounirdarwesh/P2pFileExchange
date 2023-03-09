@@ -24,10 +24,6 @@ let sender = readFileSync(path.join(__dirname, 'file_exchange', 'ID.txt'), 'utf8
 
 //* read the Files from sendData Folder that should be sent
 let sortedFiles = folderHandler(path.join(__dirname, 'file_exchange/sendData'))
-// console.log(sortedFiles.length)
-//* Array to save Offline Peers Files
-// TODO check periodically if the peer in online
-// const offlineUserData = []
 
 //* Class to create new WebSocket Connection
 class SocketInstance {
@@ -52,7 +48,7 @@ class SocketInstance {
       // trickle: false
     })
 
-    //* this function make an event return a Promise.
+    //* this helper function make an event and return a Promise.
     function waitForEvent(eventName) {
       return new Promise((resolve, reject) => {
         socket.on(eventName, (data) => {
@@ -76,7 +72,7 @@ class SocketInstance {
         let online = true;
         //* Immediately invoked function expression (IIFE) to wait for the Status.
         (async () => {
-          //* get from Signaling Server if the Receiver Online
+          //* wait to get from Signaling Server if the Receiver Online
           online = await waitForEvent('receiverStatus')
           if (online) {
             // * call the other Receiver.
@@ -86,14 +82,14 @@ class SocketInstance {
             const callee = new PeerConn(true, socket)
             callee.connect(receiver)
           } else {
-            //* the Peer is Offline
+            //* the Peer is Offline, delete his file form the List.
             sortedFiles = sortedFiles.filter(file => file.name.split('_').at(1) !== receiver)
             // moveOfflineUserData(receiver)
           }
         })()
       }
+      //* when the array is empty refill it from folder
       if (sortedFiles.length === 0) {
-        //* when the array is empty refill it from folder
         sortedFiles = folderHandler(path.join(__dirname, 'file_exchange/sendData'))
       }
     }
@@ -160,7 +156,7 @@ class PeerConn {
       initiator: this.initiator,
       wrtc,
       config: {
-        //* force to use just the TURN server.
+        //* this will force to use just the TURN server.
         // iceTransportPolicy: 'relay',
         iceServers: [
           {
@@ -232,13 +228,10 @@ class PeerConn {
           if (index >= total) {
             // all files have been sent
             //! (solved) the last file is not deleted from sendData because the rtc
-            //! Connection is getting closed before the last acknowledgement received
+            //! Connection is getting closed before the last acknowledgement got received
             setTimeout(() => {
               this.peer.destroy()
               this.socket.disconnect()
-              // setTimeout(() => {
-              //   new SocketInstance().newSocket(true, sender)
-              // }, 200)
             }, 1000)
             return
           }
@@ -259,12 +252,18 @@ class PeerConn {
     this.peer.on('data', data => {
       //* got a data channel message
       if (this.initiator) {
+        // * get ack form receiver
         const ack = JSON.parse(data)
+        // * print the name of received file form the other Peer
         console.log(ack.fileName)
+        // * delete file form the List.
         sortedFiles = sortedFiles.filter(file => file.name !== ack.fileName)
+        // * then delete file form the folder.
         this.deleteFileFromFs('./file_exchange/sendData/' + ack.fileName)
       } else {
+        //* file form sender
         const gotFromPeer = JSON.parse(data)
+        // * send Ack
         this.peer.send(JSON.stringify({ fileName: gotFromPeer.fileName }))
         //* call write file
         this.writePeerFileStream(gotFromPeer, 'file_exchange/receiveData/')
@@ -289,6 +288,7 @@ class PeerConn {
   readPeerFileStream(path, fileName) {
     return new Promise((resolve, reject) => {
       const readerStream = createReadStream(path, 'UTF8')
+      // * read the file in Chunks and send them with WebRTC
       readerStream.on('data', (chunk) => {
         this.peer.send(JSON.stringify({ fileName: fileName, chunk: chunk }))
       })
@@ -306,6 +306,7 @@ class PeerConn {
   writePeerFileStream(data, path) {
     //* write the JSON file into the File System
     const writerStream = createWriteStream(path + data.fileName)
+    // * write Chunk
     writerStream.write(data.chunk, 'UTF8')
 
     // Mark the end of file
