@@ -35,19 +35,22 @@ let NUM = 0
 // ? DB for user Authentication. (Future work for every Client Certificate and Password)
 const users = new Map()
 
-//* Middleware to handle Logging and Authentication
+//* Rate limiter to Protect the Server form DDoS and brute force attacks
 io.use((client, next) => {
-  const sender = client.handshake.auth.sender
-
-  //* Rate limiter to Protect the Server form DDoS and brute force attacks
   const ip = client.handshake.headers['x-real-ip'] || client.handshake.address
   rateLimiter.consume(ip, 1)
     .then(() => {
-      // * it will be passed to the next Middleware using the next() at the end
+      // * it will be passed to the next Middleware using the next()
+      next()
     })
     .catch(() => {
       next(new Error('Too many requests'))
     })
+})
+
+//* Middleware to handle Logging and Authentication
+io.use((client, next) => {
+  const sender = client.handshake.auth.sender
 
   //* if username already exist in the hashmap.
   if (users.has(sender)) {
