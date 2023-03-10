@@ -11,8 +11,11 @@ const turnCredential = require('./turnCredential')
 const folderHandler = require('./folderHandler')
 require('dotenv').config()
 
+const sendFolder = 'file_exchange/sendData/'
+const receiveFolder = 'file_exchange/receiveData/'
+
 //* read the ID of the Sender from the File System
-let sender = readFileSync(path.join(__dirname, 'file_exchange', 'ID.txt'), 'utf8',
+let sender = readFileSync(path.join(__dirname, sendFolder.split('/').at(0), 'ID.txt'), 'utf8',
   function (err, data) {
     if (err) {
       console.log('Sender ID is Missing' + err)
@@ -23,7 +26,7 @@ let sender = readFileSync(path.join(__dirname, 'file_exchange', 'ID.txt'), 'utf8
 )
 
 //* read the Files from sendData Folder that should be sent
-let sortedFiles = folderHandler(path.join(__dirname, 'file_exchange/sendData'))
+let sortedFiles = folderHandler(path.join(__dirname, sendFolder))
 
 //* Class to create new WebSocket Connection
 class SocketInstance {
@@ -90,7 +93,7 @@ class SocketInstance {
       }
       //* when the array is empty refill it from folder
       if (sortedFiles.length === 0) {
-        sortedFiles = folderHandler(path.join(__dirname, 'file_exchange/sendData'))
+        sortedFiles = folderHandler(path.join(__dirname, sendFolder))
       }
     }
 
@@ -99,7 +102,7 @@ class SocketInstance {
     //   sortedFiles.forEach((file) => {
     //     if (file.name.split('_').at(1) === offlineUser) {
     //       offlineUserData.push(file)
-    //       renameSync('./file_exchange/sendData/' + file.name, './file_exchange/offlineReceiver/' + file.name, (err) => {
+    //       renameSync(sendFolder + file.name, './file_exchange/offlineReceiver/' + file.name, (err) => {
     //         if (err) {
     //           throw err
     //         }
@@ -236,7 +239,7 @@ class PeerConn {
             return
           }
 
-          this.readPeerFileStream('./file_exchange/sendData/' + toSend[index].name, toSend[index].name)
+          this.readPeerFileStream(sendFolder + toSend[index].name, toSend[index].name)
             .then(() => {
               sendNextFile(index + 1)
             })
@@ -259,14 +262,14 @@ class PeerConn {
         // * delete file form the List.
         sortedFiles = sortedFiles.filter(file => file.name !== ack.fileName)
         // * then delete file form the folder.
-        this.deleteFileFromFs('./file_exchange/sendData/' + ack.fileName)
+        this.deleteFileFromFs(sendFolder + ack.fileName)
       } else {
         //* file form sender
         const gotFromPeer = JSON.parse(data)
         // * send Ack
         this.peer.send(JSON.stringify({ fileName: gotFromPeer.fileName }))
         //* call write file
-        this.writePeerFileStream(gotFromPeer, 'file_exchange/receiveData/')
+        this.writePeerFileStream(gotFromPeer, receiveFolder)
       }
     })
 
@@ -285,7 +288,7 @@ class PeerConn {
     })
   }
 
-  readPeerFileStream(path, fileName) {
+  readPeerFileStream(path, fileName, total, index) {
     return new Promise((resolve, reject) => {
       const readerStream = createReadStream(path, 'UTF8')
       // * read the file in Chunks and send them with WebRTC

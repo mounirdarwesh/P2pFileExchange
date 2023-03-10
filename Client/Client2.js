@@ -11,8 +11,11 @@ const turnCredential = require('./turnCredential')
 const folderHandler = require('./folderHandler')
 require('dotenv').config()
 
+const sendFolder = 'file_exchange2/sendData/'
+const receiveFolder = 'file_exchange2/receiveData/'
+
 //* read the ID of the Sender from the File System
-let sender = readFileSync(path.join(__dirname, 'file_exchange2', 'ID.txt'), 'utf8',
+let sender = readFileSync(path.join(__dirname, sendFolder.split('/').at(0), 'ID.txt'), 'utf8',
   function (err, data) {
     if (err) {
       console.log('Sender ID is Missing' + err)
@@ -23,11 +26,7 @@ let sender = readFileSync(path.join(__dirname, 'file_exchange2', 'ID.txt'), 'utf
 )
 
 //* read the Files from sendData Folder that should be sent
-let sortedFiles = folderHandler(path.join(__dirname, 'file_exchange2/sendData'))
-// console.log(sortedFiles.length)
-//* Array to save Offline Peers Files
-// TODO check periodically if the peer in online
-// const offlineUserData = []
+let sortedFiles = folderHandler(path.join(__dirname, sendFolder))
 
 //* Class to create new WebSocket Connection
 class SocketInstance {
@@ -52,18 +51,17 @@ class SocketInstance {
       // trickle: false
     })
 
-    //* this function make an event return a Promise.
+    //* this helper function make an event and return a Promise.
     function waitForEvent(eventName) {
       return new Promise((resolve, reject) => {
         socket.on(eventName, (data) => {
           console.log(`User ${receiver} is Online: ${data}`)
-
           resolve(data)
         })
       })
     }
 
-    function transfer () {
+    function transfer() {
       // TODO let this periodically happens
       //* if there is file to be transfer
       if (sortedFiles.length > 0) {
@@ -73,11 +71,11 @@ class SocketInstance {
         // * send the Receiver name first,to get his socket ID and to check if he is Online.
         socket.emit('get_receiver', { receiver: receiver })
 
-        // ? without the semicolon the IIFE will be assigned to online var.
+        // ! without the semicolon the IIFE will be assigned to online var.
         let online = true;
-        //* Immediately invoked function expression (IIFE)
+        //* Immediately invoked function expression (IIFE) to wait for the Status.
         (async () => {
-          //* get from Signaling Server if the Receiver Online
+          //* wait to get from Signaling Server if the Receiver Online
           online = await waitForEvent('receiverStatus')
           if (online) {
             // * call the other Receiver.
@@ -87,15 +85,15 @@ class SocketInstance {
             const callee = new PeerConn(true, socket)
             callee.connect(receiver)
           } else {
-            //* the Peer is Offline
+            //* the Peer is Offline, delete his file form the List.
             sortedFiles = sortedFiles.filter(file => file.name.split('_').at(1) !== receiver)
             // moveOfflineUserData(receiver)
           }
         })()
       }
+      //* when the array is empty refill it from folder
       if (sortedFiles.length === 0) {
-        //* when the array is empty refill it from folder
-        sortedFiles = folderHandler(path.join(__dirname, 'file_exchange2/sendData'))
+        sortedFiles = folderHandler(path.join(__dirname, sendFolder))
       }
     }
 
@@ -104,7 +102,7 @@ class SocketInstance {
     //   sortedFiles.forEach((file) => {
     //     if (file.name.split('_').at(1) === offlineUser) {
     //       offlineUserData.push(file)
-    //       renameSync('./file_exchange2/sendData/' + file.name, './file_exchange2/offlineReceiver/' + file.name, (err) => {
+    //       renameSync(sendFolder + file.name, './file_exchange/offlineReceiver/' + file.name, (err) => {
     //         if (err) {
     //           throw err
     //         }
@@ -118,11 +116,13 @@ class SocketInstance {
     //* on Connect event
     socket.on('connect', (client) => {
       console.log(`connected to WebSocket with id ${socket.id}`)
-
+      //* start to send files
       transfer()
+
       setInterval(() => {
         transfer()
       }, 2000)
+      // TODO handle offline Peer Data, it will be handled in termininfo
     })
 
     //* init a Data Channel when the Sender rings
@@ -159,7 +159,7 @@ class PeerConn {
       initiator: this.initiator,
       wrtc,
       config: {
-        //* force to use just the TURN server.
+        //* this will force to use just the TURN server.
         // iceTransportPolicy: 'relay',
         iceServers: [
           {
@@ -217,7 +217,7 @@ class PeerConn {
       console.log('connected to other peer successfully')
       //* if its the Sender
       if (this.initiator) {
-        //* move all receiver file to another Array to iterate over it (for the sake of count)
+        //* move all receiver file to another Array to iterate over it
         const toSend = []
         sortedFiles.forEach((file) => {
           if (file.name.split('_').at(1) === receiver) {
@@ -231,18 +231,15 @@ class PeerConn {
           if (index >= total) {
             // all files have been sent
             //! (solved) the last file is not deleted from sendData because the rtc
-            //! Connection is getting closed before the last acknowledgement received
+            //! Connection is getting closed before the last acknowledgement got received
             setTimeout(() => {
               this.peer.destroy()
               this.socket.disconnect()
-              // setTimeout(() => {
-              //   new SocketInstance().newSocket(true, sender)
-              // }, 100)
             }, 1000)
             return
           }
 
-          this.readPeerFileStream('./file_exchange2/sendData/' + toSend[index].name, toSend[index].name)
+          this.readPeerFileStream(sendFolder + toSend[index].name, toSend[index].name)
             .then(() => {
               sendNextFile(index + 1)
             })
@@ -258,15 +255,21 @@ class PeerConn {
     this.peer.on('data', data => {
       //* got a data channel message
       if (this.initiator) {
+        // * get ack form receiver
         const ack = JSON.parse(data)
+        // * print the name of received file form the other Peer
         console.log(ack.fileName)
+        // * delete file form the List.
         sortedFiles = sortedFiles.filter(file => file.name !== ack.fileName)
-        this.deleteFileFromFs('./file_exchange2/sendData/' + ack.fileName)
+        // * then delete file form the folder.
+        this.deleteFileFromFs(sendFolder + ack.fileName)
       } else {
+        //* file form sender
         const gotFromPeer = JSON.parse(data)
+        // * send Ack
         this.peer.send(JSON.stringify({ fileName: gotFromPeer.fileName }))
         //* call write file
-        this.writePeerFileStream(gotFromPeer, 'file_exchange2/receiveData/')
+        this.writePeerFileStream(gotFromPeer, receiveFolder)
       }
     })
 
@@ -285,9 +288,10 @@ class PeerConn {
     })
   }
 
-  readPeerFileStream(path, fileName) {
+  readPeerFileStream(path, fileName, total, index) {
     return new Promise((resolve, reject) => {
       const readerStream = createReadStream(path, 'UTF8')
+      // * read the file in Chunks and send them with WebRTC
       readerStream.on('data', (chunk) => {
         this.peer.send(JSON.stringify({ fileName: fileName, chunk: chunk }))
       })
@@ -305,6 +309,7 @@ class PeerConn {
   writePeerFileStream(data, path) {
     //* write the JSON file into the File System
     const writerStream = createWriteStream(path + data.fileName)
+    // * write Chunk
     writerStream.write(data.chunk, 'UTF8')
 
     // Mark the end of file
