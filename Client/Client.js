@@ -9,13 +9,13 @@ const wrtc = require('wrtc')
 const path = require('node:path')
 const turnCredential = require('./turnCredential')
 const folderHandler = require('./folderHandler')
-require('dotenv').config()
+require('dotenv').config({ path: path.join(__dirname, '.env') })
 
-const sendFolder = 'file_exchange/sendData/'
-const receiveFolder = 'file_exchange/receiveData/'
+const sendFolder = process.env.SEND_PATH
+const receiveFolder = process.env.RECEIVE_PATH
 
 //* read the ID of the Sender from the File System
-let sender = readFileSync(path.join(__dirname, sendFolder.split('/').at(0), 'ID.txt'), 'utf8',
+let sender = readFileSync(process.env.ID_PATH, 'utf8',
   function (err, data) {
     if (err) {
       console.log('Sender ID is Missing' + err)
@@ -26,7 +26,7 @@ let sender = readFileSync(path.join(__dirname, sendFolder.split('/').at(0), 'ID.
 )
 
 //* read the Files from sendData Folder that should be sent
-let sortedFiles = folderHandler(path.join(__dirname, sendFolder))
+let sortedFiles = folderHandler(sendFolder)
 
 //* Class to create new WebSocket Connection
 class SocketInstance {
@@ -37,12 +37,9 @@ class SocketInstance {
     // * and Authenticity and Token as a Client Password.
     const socket = io('https://localhost:3000', {
       auth: {
-        // ! token should be given as a Parameter
         // ? validate the input.
         token: process.env.SECRET_KEY,
         sender: sender
-        // receiver: receiver,
-        // initiator: initiator
       },
       ca: readFileSync(path.join(__dirname, 'certificate/cert.pem')),
       cert: readFileSync(path.join(__dirname, 'certificate/client-cert.pem')),
@@ -58,11 +55,16 @@ class SocketInstance {
           console.log(`User ${receiver} is Online: ${data}`)
           resolve(data)
         })
+        socket.on('disconnect', () => {
+          reject(new Error('Socket disconnected'))
+        })
+        socket.on('error', (error) => {
+          reject(error)
+        })
       })
     }
 
     function transfer() {
-      // TODO let this periodically happens
       //* if there is file to be transfer
       if (sortedFiles.length > 0) {
         //* get the receiver ID
@@ -87,42 +89,24 @@ class SocketInstance {
           } else {
             //* the Peer is Offline, delete his file form the List.
             sortedFiles = sortedFiles.filter(file => file.name.split('_').at(1) !== receiver)
-            // moveOfflineUserData(receiver)
           }
         })()
       }
-      //* when the array is empty refill it from folder
+      //* when the Array is empty refill it from folder
       if (sortedFiles.length === 0) {
-        sortedFiles = folderHandler(path.join(__dirname, sendFolder))
+        sortedFiles = folderHandler(sendFolder)
       }
     }
 
-    //* if the Peer Offline, his Files should be moved to Another Array and Folder
-    // function moveOfflineUserData(offlineUser) {
-    //   sortedFiles.forEach((file) => {
-    //     if (file.name.split('_').at(1) === offlineUser) {
-    //       offlineUserData.push(file)
-    //       renameSync(sendFolder + file.name, './file_exchange/offlineReceiver/' + file.name, (err) => {
-    //         if (err) {
-    //           throw err
-    //         }
-    //         console.log('File moved successfully!')
-    //       })
-    //     }
-    //   })
-    //   sortedFiles = sortedFiles.filter(file => file.name.split('_').at(1) !== offlineUser)
-    // }
-
     //* on Connect event
-    socket.on('connect', (client) => {
+    socket.on('connect', () => {
       console.log(`connected to WebSocket with id ${socket.id}`)
-      //* start to send files
+      //* Start to send Files
       transfer()
-
+      //* and every 2 Seconds repeat the same Process
       setInterval(() => {
         transfer()
       }, 2000)
-      // TODO handle offline Peer Data, it will be handled in termininfo
     })
 
     //* init a Data Channel when the Sender rings
@@ -140,7 +124,6 @@ class SocketInstance {
     //* check before if the socket connected without errors
     socket.on('connect_error', (err) => {
       console.log(err.message)
-      //! setTimeout(() => process.exit(), 50)
     })
 
     return socket
@@ -229,9 +212,7 @@ class PeerConn {
         //* recursive function to send the file sequentially and at the end close the Connection
         const sendNextFile = (index) => {
           if (index >= total) {
-            // all files have been sent
-            //! (solved) the last file is not deleted from sendData because the rtc
-            //! Connection is getting closed before the last acknowledgement got received
+            //* all files have been sent, wait for the last ack then end the conn.
             setTimeout(() => {
               this.peer.destroy()
               this.socket.disconnect()
@@ -279,8 +260,8 @@ class PeerConn {
 
       this.peer.destroy()
       this.socket.disconnect()
-      // global.gc() there is no need to call GC
-      // * there was a Problem with "cannot signal after destroy" because the
+
+      // * there were a Problem with "cannot signal after destroy" because the
       // * old socket event hooked in the old Peer instance (solved)
       setTimeout(() => {
         new SocketInstance().newSocket(sender)
@@ -288,7 +269,7 @@ class PeerConn {
     })
   }
 
-  readPeerFileStream(path, fileName, total, index) {
+  readPeerFileStream(path, fileName) {
     return new Promise((resolve, reject) => {
       const readerStream = createReadStream(path, 'UTF8')
       // * read the file in Chunks and send them with WebRTC

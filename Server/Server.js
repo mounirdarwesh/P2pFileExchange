@@ -85,9 +85,6 @@ io.on('connection', client => {
     console.log(key + ' = ' + value)
   }
 
-  // client.on('connect', () => {
-  // })
-
   //* increase the Count of Online Users
   NUM++
   console.log('a Client has Joined, # of Online Users ' + NUM)
