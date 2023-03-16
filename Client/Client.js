@@ -11,12 +11,20 @@ const turnCredential = require('./turnCredential')
 const folderHandler = require('./folderHandler')
 require('dotenv').config({ path: path.join(__dirname, '.env') })
 
-const sendFolder = process.env.SEND_PATH
-const receiveFolder = process.env.RECEIVE_PATH
+//* Paths and Amount of Time for Polling
+const sendFolder = process.env.SEND_PATH ?? process.argv.at(4)?.toString()
+const receiveFolder = process.env.RECEIVE_PATH ?? process.argv.at(5)?.toString()
+const timer = process.argv.at(2)
+
+//* check if they exists, otherwise exit
+if (!timer || !sendFolder || !receiveFolder) {
+  console.log('Please enter the Arguments Polling Time and Paths')
+  process.exit(1)
+}
 
 //* read the ID of the Sender from the File System
-let sender = readFileSync(process.env.ID_PATH, 'utf8',
-  function (err, data) {
+let sender = readFileSync(process.env.ID_PATH ?? process.argv.at(3)?.toString(), 'utf8',
+  (err, data) => {
     if (err) {
       console.log('Sender ID is Missing' + err)
       process.exit(1)
@@ -48,7 +56,7 @@ class SocketInstance {
       // trickle: false
     })
 
-    //* this helper function make an event and return a Promise.
+    //* this helper Function make an event and return a Promise.
     function waitForEvent(eventName) {
       return new Promise((resolve, reject) => {
         socket.on(eventName, (data) => {
@@ -87,7 +95,8 @@ class SocketInstance {
             const callee = new PeerConn(true, socket)
             callee.connect(receiver)
           } else {
-            //* the Peer is Offline, delete his file form the List.
+            //* if the Peer is Offline, delete his file form the List.
+            //* retry in the next poll.
             sortedFiles = sortedFiles.filter(file => file.name.split('_').at(1) !== receiver)
           }
         })()
@@ -106,7 +115,7 @@ class SocketInstance {
       //* and every 2 Seconds repeat the same Process
       setInterval(() => {
         transfer()
-      }, 2000)
+      }, timer)
     })
 
     //* init a Data Channel when the Sender rings
