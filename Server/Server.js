@@ -25,7 +25,6 @@ const rateLimiter = new RateLimiterMemory(
   })
 
 //* Socket.io Object
-// TODO change the path
 const io = new Server(httpServer, { /* here to update the path */ })
 
 //* Counter for the Online Users
@@ -130,4 +129,4 @@ io.on('connection', client => {
 })
 
 //* Start the Server on Port 3000
-httpServer.listen(process.env.PORT, () => { console.log('Server is Listening on Port 3000... ') })
+httpServer.listen(process.env.PORT, () => { console.log(`Server is Listening on Port ${process.env.PORT}... `) })

@@ -14,7 +14,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') })
 //* Paths and Amount of Time for Polling
 const sendFolder = process.env.SEND_PATH ?? process.argv.at(4)?.toString()
 const receiveFolder = process.env.RECEIVE_PATH ?? process.argv.at(5)?.toString()
-const timer = process.argv.at(2)
+const timer = process.argv.at(2) ?? 2000
 
 //* check if they exists, otherwise exit
 if (!timer || !sendFolder || !receiveFolder) {
