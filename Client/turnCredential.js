@@ -1,5 +1,6 @@
 const crypto = require('crypto')
-require('dotenv').config()
+const path = require('node:path')
+require('dotenv').config({ path: path.join(__dirname, '.env') })
 
 function getTURNCredentials (name, secret) {
   const unixTimeStamp = parseInt(Date.now() / 1000) + 24 * 3600// this credential would be valid for the next 24 hours
