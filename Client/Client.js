@@ -33,6 +33,9 @@ let sender = readFileSync(process.env.ID_PATH ?? process.argv.at(3)?.toString(),
   }
 )
 
+sender = sender.split('.').at(0)
+console.log(`my ID is ${sender}`)
+
 //* read the Files from sendData Folder that should be sent
 let sortedFiles = folderHandler(sendFolder)
 
@@ -40,7 +43,14 @@ let sortedFiles = folderHandler(sendFolder)
 class SocketInstance {
   //* Instantiate new socket.io connection
   newSocket(sender) {
-    let receiver = sortedFiles.length === 0 ? null : sortedFiles[0].name.split('_').at(1)
+    let receiver
+    if (sortedFiles.length !== 0) {
+      receiver = sortedFiles[0].name.split('_').at(1).split('.').at(0)
+      console.log(receiver)
+    } else {
+      console.log('there is no Files to send')
+      receiver = null
+    }
     // * new secure Socket.io instance with Client side Certificate for more Security
     // * and Authenticity and Token as a Client Password.
     const socket = io(process.env.SERVER_URL, {
@@ -76,7 +86,7 @@ class SocketInstance {
       //* if there is file to be transfer
       if (sortedFiles.length > 0) {
         //* get the receiver ID
-        receiver = sortedFiles[0].name.split('_').at(1)
+        receiver = sortedFiles[0].name.split('_').at(1).split('.').at(0)
 
         // * send the Receiver name first,to get his socket ID and to check if he is Online.
         socket.emit('get_receiver', { receiver: receiver })
@@ -97,7 +107,7 @@ class SocketInstance {
           } else {
             //* if the Peer is Offline, delete his file form the List.
             //* retry in the next poll.
-            sortedFiles = sortedFiles.filter(file => file.name.split('_').at(1) !== receiver)
+            sortedFiles = sortedFiles.filter(file => file.name.split('_').at(1).split('.').at(0) !== receiver)
           }
         })()
       }
@@ -212,7 +222,7 @@ class PeerConn {
         //* move all receiver file to another Array to iterate over it
         const toSend = []
         sortedFiles.forEach((file) => {
-          if (file.name.split('_').at(1) === receiver) {
+          if (file.name.split('_').at(1).split('.').at(0) === receiver) {
             toSend.push(file)
           }
         })
