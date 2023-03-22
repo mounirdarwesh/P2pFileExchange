@@ -2,7 +2,7 @@
 
 /* eslint-disable object-shorthand */
 /* eslint-disable space-before-function-paren */
-const { unlink, readFileSync, createReadStream, createWriteStream } = require('fs')
+const { unlink, readFileSync, createReadStream, createWriteStream, appendFileSync } = require('fs')
 const { io } = require('socket.io-client')
 const Peer = require('simple-peer')
 const wrtc = require('wrtc')
@@ -10,6 +10,15 @@ const path = require('node:path')
 const turnCredential = require('./turnCredential')
 const folderHandler = require('./folderHandler')
 require('dotenv').config({ path: path.join(__dirname, '.env') })
+
+//* specify path to the log file
+const logFile = ('./p2p.log')
+
+// override console.log function to write to the log file
+console.log = function(msg) {
+  appendFileSync(logFile, msg + '\n')
+  process.stdout.write(msg + '\n')
+}
 
 //* Paths and Amount of Time for Polling
 const sendFolder = process.env.SEND_PATH ?? process.argv.at(4)?.toString()
