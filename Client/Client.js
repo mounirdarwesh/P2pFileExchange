@@ -43,7 +43,7 @@ let sender = readFileSync(process.env.ID_PATH ?? process.argv.at(3)?.toString(),
 )
 
 sender = sender.split('.').at(0)
-console.log(`my ID is ${sender}`)
+console.log(`My ID is ${sender}`)
 
 //* read the Files from sendData Folder that should be sent
 let sortedFiles = folderHandler(sendFolder)
@@ -55,9 +55,8 @@ class SocketInstance {
     let receiver
     if (sortedFiles.length !== 0) {
       receiver = sortedFiles[0].name.split('_').at(1).split('.').at(0)
-      console.log(receiver)
     } else {
-      console.log('there is no Files to send')
+      console.log('There is no Files to be sent')
       receiver = null
     }
     // * new secure Socket.io instance with Client side Certificate for more Security
@@ -79,7 +78,7 @@ class SocketInstance {
     function waitForEvent(eventName) {
       return new Promise((resolve, reject) => {
         socket.on(eventName, (data) => {
-          console.log(`User ${receiver} is Online: ${data}`)
+          console.log(`Is User ${receiver} Online: ${data}`)
           resolve(data)
         })
         socket.on('disconnect', () => {
@@ -275,10 +274,13 @@ class PeerConn {
       } else {
         //* file form sender
         const gotFromPeer = JSON.parse(data)
-        // * send Ack
-        this.peer.send(JSON.stringify({ fileName: gotFromPeer.fileName }))
-        //* call write file
-        this.writePeerFileStream(gotFromPeer, receiveFolder)
+        if (gotFromPeer.done === true) {
+          // * send Ack
+          this.peer.send(JSON.stringify({ fileName: gotFromPeer.fileName }))
+        } else {
+          //* call write file
+          this.writePeerFileStream(gotFromPeer, receiveFolder)
+        }
       }
     })
 
@@ -301,11 +303,14 @@ class PeerConn {
     return new Promise((resolve, reject) => {
       const readerStream = createReadStream(path, 'UTF8')
       // * read the file in Chunks and send them with WebRTC
+      let chunkCount = 1
       readerStream.on('data', (chunk) => {
-        this.peer.send(JSON.stringify({ fileName: fileName, chunk: chunk }))
+        this.peer.send(JSON.stringify({ fileName: fileName, chunk: chunk, done: false, count: chunkCount }))
+        chunkCount++
       })
 
       readerStream.on('end', () => {
+        this.peer.send(JSON.stringify({ fileName: fileName, done: true, count: chunkCount }))
         resolve()
       })
 
@@ -317,7 +322,7 @@ class PeerConn {
 
   writePeerFileStream(data, path) {
     //* write the JSON file into the File System
-    const writerStream = createWriteStream(path + data.fileName)
+    const writerStream = createWriteStream(path + data.fileName, { flags: 'a' })
     // * write Chunk
     writerStream.write(data.chunk, 'UTF8')
 
@@ -326,7 +331,7 @@ class PeerConn {
 
     // Handle stream events --> finish, and error
     writerStream.on('finish', () => {
-      console.log('Write completed.')
+      console.log('Write completed ' + data.fileName + ' Chunk Number ' + data.count)
     })
 
     writerStream.on('error', (err) => {
