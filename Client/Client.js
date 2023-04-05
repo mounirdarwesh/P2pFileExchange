@@ -45,7 +45,7 @@ let sender = readFileSync(process.env.ID_PATH ?? process.argv.at(3)?.toString(),
 sender = sender.split('.').at(0)
 console.log(`My ID is ${sender}, version v0.3`)
 
-let marker = false
+let pollInterval
 
 //* read the Files from sendData Folder that should be sent
 let sortedFiles = folderHandler(sendFolder)
@@ -133,10 +133,8 @@ class SocketInstance {
       //* Start to send Files
       transfer()
       //* and every 2 Seconds repeat the same Process
-      setInterval(() => {
-        if (marker) {
-          transfer()
-        }
+      pollInterval = setInterval(() => {
+        transfer()
       }, timer)
     })
 
@@ -249,20 +247,19 @@ class PeerConn {
               this.peer.destroy()
               this.socket.disconnect()
             }, 1000)
-            marker = true
             return
           }
 
           this.readPeerFileStream(sendFolder + toSend[index].name, toSend[index].name)
             .then(() => {
-              marker = false
               sendNextFile(index + 1)
             })
             .catch(error => {
               console.log(error)
             })
         }
-        marker = false
+        //* clear the Interval to not interrupt data transfer.
+        clearInterval(pollInterval)
         sendNextFile(0)
       }
     })
