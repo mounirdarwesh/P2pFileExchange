@@ -168,6 +168,7 @@ class PeerConn {
     this.peer = new Peer({
       initiator: this.initiator,
       wrtc,
+      channelConfig: { maxRetransmits: 5, reliable: true, ordered: true },
       config: {
         //* this will force to use just the TURN server.
         // iceTransportPolicy: 'relay',
@@ -259,6 +260,7 @@ class PeerConn {
       }
     })
 
+    let chunks = []
     //* Fired if a Peer gets an new Data form the second Peer.
     this.peer.on('data', data => {
       //* got a data channel message
@@ -275,11 +277,21 @@ class PeerConn {
         //* file form sender
         const gotFromPeer = JSON.parse(data)
         if (gotFromPeer.done === true) {
+          console.log('All chunks received.')
+          const writeStream = createWriteStream(receiveFolder + gotFromPeer.fileName)
+          chunks.sort((a, b) => a.count - b.count)
+          chunks.forEach((chunk) => {
+            writeStream.write(chunk.chunk, 'UTF8')
+          })
+          writeStream.end()
+          chunks = []
+          console.log('Write successfully completed for this file ' + gotFromPeer.fileName)
           // * send Ack
           this.peer.send(JSON.stringify({ fileName: gotFromPeer.fileName }))
         } else {
-          //* call write file
-          this.writePeerFileStream(gotFromPeer, receiveFolder)
+          chunks.push(gotFromPeer)
+          // //* call write file
+          // this.writePeerFileStream(gotFromPeer, receiveFolder)
         }
       }
     })
@@ -297,11 +309,19 @@ class PeerConn {
         new SocketInstance().newSocket(sender)
       }, 100)
     })
+
+    this.peer.on('error', (err) => {
+      console.log('Error occurred:', err)
+    })
   }
 
   readPeerFileStream(path, fileName) {
     return new Promise((resolve, reject) => {
-      const readerStream = createReadStream(path, 'UTF8')
+      const readerStream = createReadStream(path, {
+        highWaterMark: 1024, // Reader Chunk size in Bytes
+        encoding: 'utf8'
+      })
+
       // * read the file in Chunks and send them with WebRTC
       let chunkCount = 1
       readerStream.on('data', (chunk) => {

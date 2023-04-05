@@ -2,7 +2,7 @@
 
 /* eslint-disable object-shorthand */
 /* eslint-disable space-before-function-paren */
-const { unlink, readFileSync, createReadStream, createWriteStream } = require('fs')
+const { unlink, readFileSync, createReadStream, createWriteStream, appendFileSync } = require('fs')
 const { io } = require('socket.io-client')
 const Peer = require('simple-peer')
 const wrtc = require('wrtc')
@@ -11,8 +11,25 @@ const turnCredential = require('./turnCredential')
 const folderHandler = require('./folderHandler')
 require('dotenv').config({ path: path.join(__dirname, '.env') })
 
+//* specify path to the log file
+const logFile = ('./p2p.log')
+
+// override console.log function to write to the log file
+console.log = function(msg) {
+  appendFileSync(logFile, msg + '\n')
+  process.stdout.write(msg + '\n')
+}
+
+//* Paths and Amount of Time for Polling
 const sendFolder = 'file_exchange3/sendData/'
 const receiveFolder = 'file_exchange3/receiveData/'
+const timer = process.argv.at(2) ?? 2000
+
+//* check if they exists, otherwise exit
+if (!timer || !sendFolder || !receiveFolder) {
+  console.log('Please enter the Arguments Polling Time and Paths')
+  process.exit(1)
+}
 
 //* read the ID of the Sender from the File System
 let sender = readFileSync(path.join(__dirname, sendFolder.split('/').at(0), 'ID.txt'), 'utf8',
@@ -25,6 +42,9 @@ let sender = readFileSync(path.join(__dirname, sendFolder.split('/').at(0), 'ID.
   }
 )
 
+sender = sender.split('.').at(0)
+console.log(`My ID is ${sender}`)
+
 //* read the Files from sendData Folder that should be sent
 let sortedFiles = folderHandler(sendFolder)
 
@@ -32,7 +52,13 @@ let sortedFiles = folderHandler(sendFolder)
 class SocketInstance {
   //* Instantiate new socket.io connection
   newSocket(sender) {
-    let receiver = sortedFiles.length === 0 ? null : sortedFiles[0].name.split('_').at(1)
+    let receiver
+    if (sortedFiles.length !== 0) {
+      receiver = sortedFiles[0].name.split('_').at(1).split('.').at(0)
+    } else {
+      console.log('There is no Files to be sent')
+      receiver = null
+    }
     // * new secure Socket.io instance with Client side Certificate for more Security
     // * and Authenticity and Token as a Client Password.
     const socket = io(process.env.SERVER_URL, {
@@ -48,11 +74,11 @@ class SocketInstance {
       // trickle: false
     })
 
-    //* this helper function make an event and return a Promise.
+    //* this helper Function make an event and return a Promise.
     function waitForEvent(eventName) {
       return new Promise((resolve, reject) => {
         socket.on(eventName, (data) => {
-          console.log(`User ${receiver} is Online: ${data}`)
+          console.log(`Is User ${receiver} Online: ${data}`)
           resolve(data)
         })
         socket.on('disconnect', () => {
@@ -68,7 +94,7 @@ class SocketInstance {
       //* if there is file to be transfer
       if (sortedFiles.length > 0) {
         //* get the receiver ID
-        receiver = sortedFiles[0].name.split('_').at(1)
+        receiver = sortedFiles[0].name.split('_').at(1).split('.').at(0)
 
         // * send the Receiver name first,to get his socket ID and to check if he is Online.
         socket.emit('get_receiver', { receiver: receiver })
@@ -87,12 +113,13 @@ class SocketInstance {
             const callee = new PeerConn(true, socket)
             callee.connect(receiver)
           } else {
-            //* the Peer is Offline, delete his file form the List.
-            sortedFiles = sortedFiles.filter(file => file.name.split('_').at(1) !== receiver)
+            //* if the Peer is Offline, delete his file form the List.
+            //* retry in the next poll.
+            sortedFiles = sortedFiles.filter(file => file.name.split('_').at(1).split('.').at(0) !== receiver)
           }
         })()
       }
-      //* when the array is empty refill it from folder
+      //* when the Array is empty refill it from folder
       if (sortedFiles.length === 0) {
         sortedFiles = folderHandler(sendFolder)
       }
@@ -101,13 +128,12 @@ class SocketInstance {
     //* on Connect event
     socket.on('connect', () => {
       console.log(`connected to WebSocket with id ${socket.id}`)
-      //* start to send files
+      //* Start to send Files
       transfer()
-
+      //* and every 2 Seconds repeat the same Process
       setInterval(() => {
         transfer()
-      }, 2000)
-      // TODO handle offline Peer Data, it will be handled in termininfo
+      }, timer)
     })
 
     //* init a Data Channel when the Sender rings
@@ -142,6 +168,7 @@ class PeerConn {
     this.peer = new Peer({
       initiator: this.initiator,
       wrtc,
+      channelConfig: { maxRetransmits: 5, reliable: true, ordered: true },
       config: {
         //* this will force to use just the TURN server.
         // iceTransportPolicy: 'relay',
@@ -204,7 +231,7 @@ class PeerConn {
         //* move all receiver file to another Array to iterate over it
         const toSend = []
         sortedFiles.forEach((file) => {
-          if (file.name.split('_').at(1) === receiver) {
+          if (file.name.split('_').at(1).split('.').at(0) === receiver) {
             toSend.push(file)
           }
         })
@@ -233,6 +260,7 @@ class PeerConn {
       }
     })
 
+    let chunks = []
     //* Fired if a Peer gets an new Data form the second Peer.
     this.peer.on('data', data => {
       //* got a data channel message
@@ -248,10 +276,23 @@ class PeerConn {
       } else {
         //* file form sender
         const gotFromPeer = JSON.parse(data)
-        // * send Ack
-        this.peer.send(JSON.stringify({ fileName: gotFromPeer.fileName }))
-        //* call write file
-        this.writePeerFileStream(gotFromPeer, receiveFolder)
+        if (gotFromPeer.done === true) {
+          console.log('All chunks received.')
+          const writeStream = createWriteStream(receiveFolder + gotFromPeer.fileName)
+          chunks.sort((a, b) => a.count - b.count)
+          chunks.forEach((chunk) => {
+            writeStream.write(chunk.chunk, 'UTF8')
+          })
+          writeStream.end()
+          chunks = []
+          console.log('Write successfully completed for this file ' + gotFromPeer.fileName)
+          // * send Ack
+          this.peer.send(JSON.stringify({ fileName: gotFromPeer.fileName }))
+        } else {
+          chunks.push(gotFromPeer)
+          // //* call write file
+          // this.writePeerFileStream(gotFromPeer, receiveFolder)
+        }
       }
     })
 
@@ -268,17 +309,28 @@ class PeerConn {
         new SocketInstance().newSocket(sender)
       }, 100)
     })
+
+    this.peer.on('error', (err) => {
+      console.log('Error occurred:', err)
+    })
   }
 
   readPeerFileStream(path, fileName) {
     return new Promise((resolve, reject) => {
-      const readerStream = createReadStream(path, 'UTF8')
+      const readerStream = createReadStream(path, {
+        highWaterMark: 1024, // Reader Chunk size in Bytes
+        encoding: 'utf8'
+      })
+
       // * read the file in Chunks and send them with WebRTC
+      let chunkCount = 1
       readerStream.on('data', (chunk) => {
-        this.peer.send(JSON.stringify({ fileName: fileName, chunk: chunk }))
+        this.peer.send(JSON.stringify({ fileName: fileName, chunk: chunk, done: false, count: chunkCount }))
+        chunkCount++
       })
 
       readerStream.on('end', () => {
+        this.peer.send(JSON.stringify({ fileName: fileName, done: true, count: chunkCount }))
         resolve()
       })
 
@@ -290,7 +342,7 @@ class PeerConn {
 
   writePeerFileStream(data, path) {
     //* write the JSON file into the File System
-    const writerStream = createWriteStream(path + data.fileName)
+    const writerStream = createWriteStream(path + data.fileName, { flags: 'a' })
     // * write Chunk
     writerStream.write(data.chunk, 'UTF8')
 
@@ -299,7 +351,7 @@ class PeerConn {
 
     // Handle stream events --> finish, and error
     writerStream.on('finish', () => {
-      console.log('Write completed.')
+      console.log('Write completed ' + data.fileName + ' Chunk Number ' + data.count)
     })
 
     writerStream.on('error', (err) => {
