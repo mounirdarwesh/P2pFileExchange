@@ -43,8 +43,9 @@ let sender = readFileSync(process.env.ID_PATH ?? process.argv.at(3)?.toString(),
 )
 
 sender = sender.split('.').at(0)
-console.log(`My ID is ${sender}, version v0.3`)
+console.log(`My ID is ${sender}, v1.0.3`)
 
+//* Interval to look in send Folder if there is File to be sent.
 let pollInterval
 
 //* read the Files from sendData Folder that should be sent
@@ -264,6 +265,7 @@ class PeerConn {
       }
     })
 
+    //* Buffer to save the Chunks of the File
     let chunks = []
     //* Fired if a Peer gets an new Data form the second Peer.
     this.peer.on('data', data => {
@@ -280,8 +282,9 @@ class PeerConn {
       } else {
         //* file form sender
         const gotFromPeer = JSON.parse(data)
+        //* indicates the End of File (EOF)
         if (gotFromPeer.done === true) {
-          console.log('All chunks received.')
+          // console.log('All chunks received.')
           const writeStream = createWriteStream(receiveFolder + gotFromPeer.fileName)
           chunks.sort((a, b) => a.count - b.count)
           chunks.forEach((chunk) => {
