@@ -4,7 +4,7 @@ const { readFileSync } = require('fs')
 const { createServer } = require('https')
 const { Server } = require('socket.io')
 const path = require('node:path')
-require('dotenv').config()
+require('dotenv').config({ path: path.join(__dirname, '.env') })
 const { RateLimiterMemory } = require('rate-limiter-flexible')
 
 // * create https Server with self signed Certificate

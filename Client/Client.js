@@ -2,7 +2,7 @@
 
 /* eslint-disable object-shorthand */
 /* eslint-disable space-before-function-paren */
-const { unlink, readFileSync, createReadStream, createWriteStream, appendFileSync } = require('fs')
+const { unlink, readFileSync, createReadStream, appendFileSync, writeFileSync } = require('fs')
 const { io } = require('socket.io-client')
 const Peer = require('simple-peer')
 const wrtc = require('wrtc')
@@ -10,6 +10,7 @@ const path = require('node:path')
 const turnCredential = require('./turnCredential')
 const folderHandler = require('./folderHandler')
 require('dotenv').config({ path: path.join(__dirname, '.env') })
+const hashFile = require('./hashFile')
 
 //* specify path to the log file
 const logFile = ('./p2p.log')
@@ -275,30 +276,32 @@ class PeerConn {
         const ack = JSON.parse(data)
         // * print the name of received file form the other Peer
         console.log(ack.fileName)
-        // * delete file form the List.
-        sortedFiles = sortedFiles.filter(file => file.name !== ack.fileName)
-        // * then delete file form the folder.
-        this.deleteFileFromFs(sendFolder + ack.fileName)
+        //* create the hash
+        const hashDigest = hashFile(sendFolder + ack.fileName)
+        console.log(hashDigest)
+        //* making sure file integrity by comparing Hash Digest
+        if (ack.hashDigest === hashDigest) {
+          // * delete file form the List.
+          sortedFiles = sortedFiles.filter(file => file.name !== ack.fileName)
+          // * then delete file form the folder.
+          this.deleteFileFromFs(sendFolder + ack.fileName)
+        }
       } else {
         //* file form sender
         const gotFromPeer = JSON.parse(data)
         //* indicates the End of File (EOF)
         if (gotFromPeer.done === true) {
-          // console.log('All chunks received.')
-          const writeStream = createWriteStream(receiveFolder + gotFromPeer.fileName)
-          chunks.sort((a, b) => a.count - b.count)
-          chunks.forEach((chunk) => {
-            writeStream.write(chunk.chunk, 'UTF8')
-          })
-          writeStream.end()
+          this.writeChunksToFile(chunks, receiveFolder + gotFromPeer.fileName)
+
           chunks = []
           console.log('Write successfully completed for this file ' + gotFromPeer.fileName)
+          //* create the hash
+          const hashDigest = hashFile(receiveFolder + gotFromPeer.fileName)
+          console.log(hashDigest)
           // * send Ack
-          this.peer.send(JSON.stringify({ fileName: gotFromPeer.fileName }))
+          this.peer.send(JSON.stringify({ fileName: gotFromPeer.fileName, hashDigest: hashDigest }))
         } else {
           chunks.push(gotFromPeer)
-          // //* call write file
-          // this.writePeerFileStream(gotFromPeer, receiveFolder)
         }
       }
     })
@@ -347,23 +350,13 @@ class PeerConn {
     })
   }
 
-  writePeerFileStream(data, path) {
-    //* write the JSON file into the File System
-    const writerStream = createWriteStream(path + data.fileName, { flags: 'a' })
-    // * write Chunk
-    writerStream.write(data.chunk, 'UTF8')
-
-    // Mark the end of file
-    writerStream.end()
-
-    // Handle stream events --> finish, and error
-    writerStream.on('finish', () => {
-      console.log('Write completed ' + data.fileName + ' Chunk Number ' + data.count)
-    })
-
-    writerStream.on('error', (err) => {
-      console.log(err.stack)
-    })
+  async writeChunksToFile(chunks, filePath) {
+    try {
+      const data = chunks.sort((a, b) => a.count - b.count).map((chunk) => chunk.chunk).join('')
+      writeFileSync(filePath, data, 'utf8')
+    } catch (err) {
+      throw new Error(`Error writing chunks to file: ${err.message}`)
+    }
   }
 
   deleteFileFromFs(path) {

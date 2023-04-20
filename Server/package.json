@@ -1,5 +1,5 @@
 {
-  "name": "p2p-file-transfer",
+  "name": "signaling-server",
   "version": "1.0.0",
   "description": "Transfer JSON file from a medical Center to another Peer to Peer Using WebRTC",
   "bin": "Server.js",
