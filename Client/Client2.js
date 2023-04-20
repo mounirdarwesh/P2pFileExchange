@@ -44,7 +44,7 @@ let sender = readFileSync(path.join(__dirname, sendFolder.split('/').at(0), 'ID.
 )
 
 sender = sender.split('.').at(0)
-console.log(`My ID is ${sender}, v1.0.3`)
+console.log(`My ID is ${sender}, v1.0.4`)
 
 //* Interval to look in send Folder if there is File to be sent.
 let pollInterval
