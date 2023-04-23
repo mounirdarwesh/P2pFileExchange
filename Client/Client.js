@@ -339,7 +339,7 @@ class PeerConn {
   readPeerFileStream(path, fileName) {
     return new Promise((resolve, reject) => {
       const readerStream = fs.createReadStream(path, {
-        highWaterMark: 1024, // Reader Chunk size in Bytes
+        highWaterMark: 1024 * 8, // Reader Chunk size in Bytes
         encoding: 'utf8'
       })
 

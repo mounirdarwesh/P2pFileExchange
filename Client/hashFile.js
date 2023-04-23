@@ -1,8 +1,7 @@
 const crypto = require('crypto')
 const fs = require('fs')
 
-// create a function in nodejs that synchronously hash entire file
-// and then return the digest back and export it as a module
+//* synchronously hash entire file and then return the digest back
 
 module.exports = (filepath) => {
   const hash = crypto.createHash('sha256')
