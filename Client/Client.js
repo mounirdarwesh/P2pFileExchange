@@ -2,7 +2,7 @@
 
 /* eslint-disable object-shorthand */
 /* eslint-disable space-before-function-paren */
-const { unlink, readFileSync, createReadStream, appendFileSync, writeFileSync } = require('fs')
+const fs = require('fs')
 const { io } = require('socket.io-client')
 const Peer = require('simple-peer')
 const wrtc = require('wrtc')
@@ -12,13 +12,24 @@ const folderHandler = require('./folderHandler')
 require('dotenv').config({ path: path.join(__dirname, '.env') })
 const hashFile = require('./hashFile')
 
-//* specify path to the log file
-const logFile = ('./p2p.log')
+//* check if the log file exceed 5mb
+//! implement log rotation
+const stats = fs.statSync('./p2p.log')
+const fileSizeInBytes = stats.size
+if (fileSizeInBytes > 5 * 1024 * 1024) {
+  fs.unlink('./p2p.log', (err) => {
+    if (err) {
+      console.error(err)
+    }
+  })
+}
 
 // override console.log function to write to the log file
 console.log = function(msg) {
-  appendFileSync(logFile, msg + '\n')
-  process.stdout.write(msg + '\n')
+  const timestamp = new Date().toISOString()
+  const logMessage = `${timestamp} ${msg}`
+  fs.appendFileSync('p2p.log', logMessage + '\n')
+  process.stdout.write(logMessage + '\n')
 }
 
 //* Paths and Amount of Time for Polling
@@ -33,7 +44,7 @@ if (!timer || !sendFolder || !receiveFolder) {
 }
 
 //* read the ID of the Sender from the File System
-let sender = readFileSync(process.env.ID_PATH ?? process.argv.at(3)?.toString(), 'utf8',
+let sender = fs.readFileSync(process.env.ID_PATH ?? process.argv.at(3)?.toString(), 'utf8',
   (err, data) => {
     if (err) {
       console.log('Sender ID is Missing' + err)
@@ -44,7 +55,7 @@ let sender = readFileSync(process.env.ID_PATH ?? process.argv.at(3)?.toString(),
 )
 
 sender = sender.split('.').at(0)
-console.log(`My ID is ${sender}, v1.0.4`)
+console.log(`My ID is ${sender}, v1.1.0`)
 
 //* Interval to look in send Folder if there is File to be sent.
 let pollInterval
@@ -71,9 +82,9 @@ class SocketInstance {
         token: process.env.SECRET_KEY,
         sender: sender
       },
-      ca: readFileSync(path.join(__dirname, 'certificate/cert.pem')),
-      cert: readFileSync(path.join(__dirname, 'certificate/client-cert.pem')),
-      key: readFileSync(path.join(__dirname, 'certificate/client-key.pem')),
+      ca: fs.readFileSync(path.join(__dirname, 'certificate/cert.pem')),
+      cert: fs.readFileSync(path.join(__dirname, 'certificate/client-cert.pem')),
+      key: fs.readFileSync(path.join(__dirname, 'certificate/client-key.pem')),
       rejectUnauthorized: false
       // trickle: false
     })
@@ -327,7 +338,7 @@ class PeerConn {
 
   readPeerFileStream(path, fileName) {
     return new Promise((resolve, reject) => {
-      const readerStream = createReadStream(path, {
+      const readerStream = fs.createReadStream(path, {
         highWaterMark: 1024, // Reader Chunk size in Bytes
         encoding: 'utf8'
       })
@@ -350,17 +361,17 @@ class PeerConn {
     })
   }
 
-  async writeChunksToFile(chunks, filePath) {
+  writeChunksToFile(chunks, filePath) {
     try {
       const data = chunks.sort((a, b) => a.count - b.count).map((chunk) => chunk.chunk).join('')
-      writeFileSync(filePath, data, 'utf8')
+      fs.writeFileSync(filePath, data, 'utf8')
     } catch (err) {
       throw new Error(`Error writing chunks to file: ${err.message}`)
     }
   }
 
   deleteFileFromFs(path) {
-    unlink(path, (err) => {
+    fs.unlink(path, (err) => {
       if (err) {
         console.error(err)
       }
