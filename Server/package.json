@@ -12,7 +12,7 @@
   "dependencies": {
     "dotenv": "^16.0.3",
     "rate-limiter-flexible": "^2.4.1",
-    "socket.io": "^4.5.3"
+    "socket.io": "^4.6.1"
   },
   "pkg": {
     "scripts": "Server.js",
