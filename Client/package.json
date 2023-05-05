@@ -11,15 +11,16 @@
   "license": "MIT",
   "dependencies": {
     "dotenv": "^16.0.3",
+    "log4js": "^6.9.1",
     "simple-peer": "^9.11.1",
-    "socket.io-client": "^4.5.3",
+    "socket.io-client": "^4.6.1",
     "wrtc": "^0.4.7"
   },
   "devDependencies": {
-    "eslint": "^8.26.0",
+    "eslint": "^8.39.0",
     "eslint-config-standard": "^17.0.0",
-    "eslint-plugin-import": "^2.26.0",
-    "eslint-plugin-n": "^15.3.0",
+    "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-n": "^15.7.0",
     "eslint-plugin-promise": "^6.1.1"
   },
   "pkg": {

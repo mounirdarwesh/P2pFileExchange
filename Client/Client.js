@@ -11,26 +11,28 @@ const turnCredential = require('./turnCredential')
 const folderHandler = require('./folderHandler')
 require('dotenv').config({ path: path.join(__dirname, '.env') })
 const hashFile = require('./hashFile')
+const log4js = require('log4js')
 
-//* check if the log file exceed 5mb
-//! implement log rotation
-const stats = fs.statSync('./p2p.log')
-const fileSizeInBytes = stats.size
-if (fileSizeInBytes > 5 * 1024 * 1024) {
-  fs.unlink('./p2p.log', (err) => {
-    if (err) {
-      console.error(err)
-    }
-  })
-}
+// log the cheese logger messages to a file, and the console ones as well.
+log4js.configure({
+  appenders: {
+    p2p: {
+      type: 'file',
+      filename: 'p2p.log',
+      maxLogSize: 100000,
+      backups: 5,
+      keepFileExt: true,
+      compress: true
+    },
+    console: { type: 'console' }
+  },
+  categories: {
+    p2p: { appenders: ['console', 'p2p'], level: 'error' },
+    default: { appenders: ['console', 'p2p'], level: 'trace' }
+  }
+})
 
-// override console.log function to write to the log file
-console.log = function(msg) {
-  const timestamp = new Date().toISOString()
-  const logMessage = `${timestamp} ${msg}`
-  fs.appendFileSync('p2p.log', logMessage + '\n')
-  process.stdout.write(logMessage + '\n')
-}
+const logger = log4js.getLogger('p2p')
 
 //* Paths and Amount of Time for Polling
 const sendFolder = process.env.SEND_PATH ?? process.argv.at(4)?.toString()
@@ -39,7 +41,7 @@ const timer = process.argv.at(2) ?? 2000
 
 //* check if they exists, otherwise exit
 if (!timer || !sendFolder || !receiveFolder) {
-  console.log('Please enter the Arguments Polling Time and Paths')
+  logger.log('Please enter the Arguments Polling Time and Paths')
   process.exit(1)
 }
 
@@ -47,7 +49,7 @@ if (!timer || !sendFolder || !receiveFolder) {
 let sender = fs.readFileSync(process.env.ID_PATH ?? process.argv.at(3)?.toString(), 'utf8',
   (err, data) => {
     if (err) {
-      console.log('Sender ID is Missing' + err)
+      logger.log('Sender ID is Missing' + err)
       process.exit(1)
     }
     sender = data
@@ -55,7 +57,7 @@ let sender = fs.readFileSync(process.env.ID_PATH ?? process.argv.at(3)?.toString
 )
 
 sender = sender.split('.').at(0)
-console.log(`My ID is ${sender}, v1.1.0`)
+logger.log(`My ID is ${sender}, v1.1.0`)
 
 //* Interval to look in send Folder if there is File to be sent.
 let pollInterval
@@ -71,7 +73,7 @@ class SocketInstance {
     if (sortedFiles.length !== 0) {
       receiver = sortedFiles[0].name.split('_').at(1).split('.').at(0)
     } else {
-      console.log('There is no Files to be sent')
+      logger.log('There is no Files to be sent')
       receiver = null
     }
     // * new secure Socket.io instance with Client side Certificate for more Security
@@ -93,7 +95,7 @@ class SocketInstance {
     function waitForEvent(eventName) {
       return new Promise((resolve, reject) => {
         socket.on(eventName, (data) => {
-          console.log(`Is User ${receiver} Online: ${data}`)
+          logger.log(`Is User ${receiver} Online: ${data}`)
           resolve(data)
         })
         socket.on('disconnect', () => {
@@ -142,7 +144,7 @@ class SocketInstance {
 
     //* on Connect event
     socket.on('connect', () => {
-      console.log(`connected to WebSocket with id ${socket.id}`)
+      logger.log(`connected to WebSocket with id ${socket.id}`)
       //* Start to send Files
       transfer()
       //* and every 2 Seconds repeat the same Process
@@ -153,19 +155,19 @@ class SocketInstance {
 
     //* init a Data Channel when the Sender rings
     socket.on('calling', (callerID) => {
-      console.log('Ringing')
+      logger.log('Ringing')
       const callee = new PeerConn(false, socket, callerID)
       callee.connect()
     })
 
     //* if the Connection form the Server side has been disconnected
     socket.on('disconnect', (err) => {
-      console.log(err)
+      logger.log(err)
     })
 
     //* check before if the socket connected without errors
     socket.on('connect_error', (err) => {
-      console.log(err.message)
+      logger.log(err.message)
     })
 
     return socket
@@ -223,7 +225,7 @@ class PeerConn {
 
     //* when a socket from other Client from the Server has been disconnected
     this.socket.on('socketDisconnect', data => {
-      console.log(data)
+      logger.log(data)
     })
 
     //* Fired when the peer wants to send signaling data to the remote peer.
@@ -231,16 +233,16 @@ class PeerConn {
     //* in case of the recipient, it will fire after receiving and Offer.
     this.peer.on('signal', signalData => {
       if (this.initiator) {
-        console.log('offer data has been emitted!')
+        logger.log('offer data has been emitted!')
         this.socket.emit('offer', { signalData, from: this.socket.id })
       } else {
-        console.log('Answer Created')
+        logger.log('Answer Created')
         this.socket.emit('answer', { signalData, to: this.caller })
       }
     })
 
     this.peer.on('connect', () => {
-      console.log('connected to other peer successfully')
+      logger.log('connected to other peer successfully')
       //* if its the Sender
       if (this.initiator) {
         //* move all receiver file to another Array to iterate over it
@@ -268,7 +270,7 @@ class PeerConn {
               sendNextFile(index + 1)
             })
             .catch(error => {
-              console.log(error)
+              logger.log(error)
             })
         }
         //* clear the Interval to not interrupt data transfer.
@@ -286,10 +288,10 @@ class PeerConn {
         // * get ack form receiver
         const ack = JSON.parse(data)
         // * print the name of received file form the other Peer
-        console.log(ack.fileName)
+        logger.log(ack.fileName)
         //* create the hash
         const hashDigest = hashFile(sendFolder + ack.fileName)
-        console.log(hashDigest)
+        logger.log(hashDigest)
         //* making sure file integrity by comparing Hash Digest
         if (ack.hashDigest === hashDigest) {
           // * delete file form the List.
@@ -305,12 +307,17 @@ class PeerConn {
           this.writeChunksToFile(chunks, receiveFolder + gotFromPeer.fileName)
 
           chunks = []
-          console.log('Write successfully completed for this file ' + gotFromPeer.fileName)
+          logger.log('Write successfully completed for this file ' + gotFromPeer.fileName)
           //* create the hash
           const hashDigest = hashFile(receiveFolder + gotFromPeer.fileName)
-          console.log(hashDigest)
+          logger.log(hashDigest)
           // * send Ack
-          this.peer.send(JSON.stringify({ fileName: gotFromPeer.fileName, hashDigest: hashDigest }))
+          try {
+            this.peer.send(JSON.stringify({ fileName: gotFromPeer.fileName, hashDigest: hashDigest }))
+          } catch (error) {
+            logger.error(error)
+            process.exit(1)
+          }
         } else {
           chunks.push(gotFromPeer)
         }
@@ -319,7 +326,7 @@ class PeerConn {
 
     //* Fired if any Peer close the Data Channel
     this.peer.on('close', () => {
-      console.log('WebRTC DataChannel connection is closed ')
+      logger.log('WebRTC DataChannel connection is closed ')
 
       this.peer.destroy()
       this.socket.disconnect()
@@ -332,26 +339,35 @@ class PeerConn {
     })
 
     this.peer.on('error', (err) => {
-      console.log('Error occurred:', err)
+      logger.log('Error occurred:', err)
     })
   }
 
   readPeerFileStream(path, fileName) {
     return new Promise((resolve, reject) => {
       const readerStream = fs.createReadStream(path, {
-        highWaterMark: 1024 * 8, // Reader Chunk size in Bytes
+        highWaterMark: 1024 * 5, // Reader Chunk size in Bytes
         encoding: 'utf8'
       })
 
       // * read the file in Chunks and send them with WebRTC
       let chunkCount = 1
       readerStream.on('data', (chunk) => {
-        this.peer.send(JSON.stringify({ fileName: fileName, chunk: chunk, done: false, count: chunkCount }))
+        try {
+          this.peer.send(JSON.stringify({ fileName: fileName, chunk: chunk, done: false, count: chunkCount }))
+        } catch (error) {
+          logger.error(error)
+          process.exit(1)
+        }
         chunkCount++
       })
 
       readerStream.on('end', () => {
-        this.peer.send(JSON.stringify({ fileName: fileName, done: true, count: chunkCount }))
+        try {
+          this.peer.send(JSON.stringify({ fileName: fileName, done: true, count: chunkCount }))
+        } catch (error) {
+          logger.error(error)
+        }
         resolve()
       })
 
@@ -373,7 +389,7 @@ class PeerConn {
   deleteFileFromFs(path) {
     fs.unlink(path, (err) => {
       if (err) {
-        console.error(err)
+        logger.error(err)
       }
     })
   }

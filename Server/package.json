@@ -12,7 +12,7 @@
   "dependencies": {
     "dotenv": "^16.0.3",
     "rate-limiter-flexible": "^2.4.1",
-    "socket.io": "^4.5.3"
+    "socket.io": "^4.6.1"
   },
   "pkg": {
     "scripts": "Server.js",
@@ -21,10 +21,10 @@
     ]
   },
   "devDependencies": {
-    "eslint": "^8.26.0",
+    "eslint": "^8.39.0",
     "eslint-config-standard": "^17.0.0",
-    "eslint-plugin-import": "^2.26.0",
-    "eslint-plugin-n": "^15.3.0",
+    "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-n": "^15.7.0",
     "eslint-plugin-promise": "^6.1.1"
   }
 }
