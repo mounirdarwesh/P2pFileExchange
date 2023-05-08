@@ -1,9 +1,8 @@
 {
-  "name": "p2p-file-transfer",
+  "name": "p2p_file_transfer",
   "version": "1.0.3",
   "description": "Transfer JSON file from a medical Center to another Peer to Peer Using WebRTC",
   "bin": "Client.js",
-  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -11,6 +10,7 @@
   "license": "MIT",
   "dependencies": {
     "dotenv": "^16.0.3",
+    "ini": "^4.1.0",
     "log4js": "^6.9.1",
     "simple-peer": "^9.11.1",
     "socket.io-client": "^4.6.1",
@@ -28,6 +28,9 @@
     "assets": [
       "./certificate",
       ".env"
+    ],
+    "targets": [
+      "node18-win-x64"
     ]
   }
 }

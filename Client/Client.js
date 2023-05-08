@@ -12,8 +12,13 @@ const folderHandler = require('./folderHandler')
 require('dotenv').config({ path: path.join(__dirname, '.env') })
 const hashFile = require('./hashFile')
 const log4js = require('log4js')
+const ini = require('ini')
 
-// log the cheese logger messages to a file, and the console ones as well.
+//* Global Variables and Configurations
+//*  Configurations for ini file
+const config = ini.parse(fs.readFileSync(path.join(__dirname, 'config.ini'), 'utf-8'))
+
+//*  Configurations for log4js
 log4js.configure({
   appenders: {
     p2p: {
@@ -27,7 +32,7 @@ log4js.configure({
     console: { type: 'console' }
   },
   categories: {
-    p2p: { appenders: ['console', 'p2p'], level: 'error' },
+    p2p: { appenders: ['console', 'p2p'], level: config.log.LOG_LEVEL },
     default: { appenders: ['console', 'p2p'], level: 'trace' }
   }
 })
@@ -35,9 +40,9 @@ log4js.configure({
 const logger = log4js.getLogger('p2p')
 
 //* Paths and Amount of Time for Polling
-const sendFolder = process.env.SEND_PATH ?? process.argv.at(4)?.toString()
-const receiveFolder = process.env.RECEIVE_PATH ?? process.argv.at(5)?.toString()
-const timer = process.argv.at(2) ?? 2000
+const sendFolder = config.path.SEND_PATH
+const receiveFolder = config.path.RECEIVE_PATH
+const timer = config.path.TIMER ?? 2000
 
 //* check if they exists, otherwise exit
 if (!timer || !sendFolder || !receiveFolder) {
@@ -46,7 +51,7 @@ if (!timer || !sendFolder || !receiveFolder) {
 }
 
 //* read the ID of the Sender from the File System
-let sender = fs.readFileSync(process.env.ID_PATH ?? process.argv.at(3)?.toString(), 'utf8',
+let sender = fs.readFileSync(config.path.ID_PATH, 'utf8',
   (err, data) => {
     if (err) {
       logger.log('Sender ID is Missing' + err)
@@ -76,12 +81,15 @@ class SocketInstance {
       logger.log('There is no Files to be sent')
       receiver = null
     }
+
+    const decodeBase64 = (str) => Buffer.from(str, 'base64').toString('utf-8')
+
     // * new secure Socket.io instance with Client side Certificate for more Security
     // * and Authenticity and Token as a Client Password.
-    const socket = io(process.env.SERVER_URL, {
+    const socket = io(config.server.SERVER_URL, {
       auth: {
         // ? validate the input.
-        token: process.env.SECRET_KEY,
+        token: decodeBase64(decodeBase64(config.key.SECRET_KEY)),
         sender: sender
       },
       ca: fs.readFileSync(path.join(__dirname, 'certificate/cert.pem')),

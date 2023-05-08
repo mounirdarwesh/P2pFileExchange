@@ -79,10 +79,10 @@ io.on('connection', client => {
     users.set(sender, client.id)
   }
 
-  //* print the Map entries
-  for (const [key, value] of users) {
-    console.log(key + ' = ' + value)
-  }
+  // //* print the Map entries
+  // for (const [key, value] of users) {
+  //   console.log(key + ' = ' + value)
+  // }
 
   //* increase the Count of Online Users
   NUM++
