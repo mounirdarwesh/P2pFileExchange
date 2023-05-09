@@ -4,10 +4,11 @@
   "description": "Transfer JSON file from a medical Center to another Peer to Peer Using WebRTC",
   "bin": "Server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
+    "build": "pkg --compress GZip ."
   },
   "author": "Mounir Darwish",
-  "license": "MIT",
+  "license": "GPL-3.0",
   "dependencies": {
     "dotenv": "^16.0.3",
     "rate-limiter-flexible": "^2.4.1",

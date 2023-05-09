@@ -7,7 +7,7 @@ const path = require('node:path')
 require('dotenv').config({ path: path.join(__dirname, '.env') })
 const { RateLimiterMemory } = require('rate-limiter-flexible')
 
-// * create https Server with self signed Certificate
+//* create https Server with self signed Certificate
 const httpServer = createServer({
   key: readFileSync(path.join(__dirname, './assets/key.pem')),
   cert: readFileSync(path.join(__dirname, './assets/cert.pem')),

@@ -16,7 +16,7 @@ const ini = require('ini')
 
 //* Global Variables and Configurations
 //*  Configurations for ini file
-const config = ini.parse(fs.readFileSync(path.join(__dirname, 'config.ini'), 'utf-8'))
+const config = ini.parse(fs.readFileSync('./config.ini', 'utf-8'))
 
 //*  Configurations for log4js
 log4js.configure({
