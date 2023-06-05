@@ -10,9 +10,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Change Directory
-        working-directory: ./Client
-
       - name: Checkout repository
         uses: actions/checkout@v2
 
@@ -22,6 +19,7 @@ jobs:
           node-version: '18.x'
 
       - name: Install dependencies
+        working-directory: ./Client
         run: npm install
         
       - name: Install pkg
