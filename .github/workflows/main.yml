@@ -20,7 +20,8 @@ jobs:
 
       - name: Install dependencies
         working-directory: ./Client
-        run: npm install
+        run: npm i node-pre-gyp
+             npm install
         
       - name: Install pkg
         run: npm install -g pkg
