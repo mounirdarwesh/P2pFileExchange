@@ -11,7 +11,7 @@ jobs:
 
     steps:
       - name: Change Directory
-        run: cd Client
+        working-directory: ./Client
 
       - name: Checkout repository
         uses: actions/checkout@v2
