@@ -46,7 +46,7 @@ const timer = config.path.TIMER ?? 2000
 
 //* check if they exists, otherwise exit
 if (!timer || !sendFolder || !receiveFolder) {
-  logger.log('Please enter the Arguments Polling Time and Paths')
+  logger.fatal('Please enter the Arguments Polling Time and Paths')
   process.exit(1)
 }
 
@@ -54,7 +54,7 @@ if (!timer || !sendFolder || !receiveFolder) {
 let sender = fs.readFileSync(config.path.ID_PATH, 'utf8',
   (err, data) => {
     if (err) {
-      logger.log('Sender ID is Missing' + err)
+      logger.fatal('Sender ID is Missing' + err)
       process.exit(1)
     }
     sender = data
@@ -170,12 +170,12 @@ class SocketInstance {
 
     //* if the Connection form the Server side has been disconnected
     socket.on('disconnect', (err) => {
-      logger.log(err)
+      logger.warn(err)
     })
 
     //* check before if the socket connected without errors
     socket.on('connect_error', (err) => {
-      logger.log(err.message)
+      logger.error(err.message)
     })
 
     return socket
@@ -231,7 +231,7 @@ class PeerConn {
       this.peer.signal(JSON.stringify(data.signalData))
     })
 
-    //* when a socket from other Client from the Server has been disconnected
+    //* when a socket Client from the Server has been disconnected
     this.socket.on('socketDisconnect', data => {
       logger.log(data)
     })
@@ -278,7 +278,7 @@ class PeerConn {
               sendNextFile(index + 1)
             })
             .catch(error => {
-              logger.log(error)
+              logger.warn(error)
             })
         }
         //* clear the Interval to not interrupt data transfer.
@@ -299,7 +299,7 @@ class PeerConn {
         logger.log(ack.fileName)
         //* create the hash
         const hashDigest = hashFile(sendFolder + ack.fileName)
-        logger.log(hashDigest)
+        logger.trace(hashDigest)
         //* making sure file integrity by comparing Hash Digest
         if (ack.hashDigest === hashDigest) {
           // * delete file form the List.
@@ -318,7 +318,7 @@ class PeerConn {
           logger.log('Write successfully completed for this file ' + gotFromPeer.fileName)
           //* create the hash
           const hashDigest = hashFile(receiveFolder + gotFromPeer.fileName)
-          logger.log(hashDigest)
+          logger.trace(hashDigest)
           // * send Ack
           try {
             this.peer.send(JSON.stringify({ fileName: gotFromPeer.fileName, hashDigest: hashDigest }))
@@ -347,7 +347,7 @@ class PeerConn {
     })
 
     this.peer.on('error', (err) => {
-      logger.log('Error occurred:', err)
+      logger.error('Error occurred:', err)
     })
   }
 
