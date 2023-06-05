@@ -10,10 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Change Dicrectory
-      - run: cd Client
-    
-      - uses: actions/checkout@v2
+      - name: Change Directory
+        run: cd Client
+
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
       - name: Use Node.js 18.x
         uses: actions/setup-node@v2
