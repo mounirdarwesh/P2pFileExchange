@@ -87,6 +87,7 @@ class SocketInstance {
     // * new secure Socket.io instance with Client side Certificate for more Security
     // * and Authenticity and Token as a Client Password.
     const socket = io(config.server.SERVER_URL, {
+      transports: ['websocket'],
       auth: {
         // ? validate the input.
         token: decodeBase64(decodeBase64(config.key.SECRET_KEY)),
@@ -120,6 +121,12 @@ class SocketInstance {
       if (sortedFiles.length > 0) {
         //* get the receiver ID
         receiver = sortedFiles[0].name.split('_').at(1).split('.').at(0)
+
+        if (receiver === sender) {
+          logger.warn('you cannot sent to your self!')
+          // TODO delete the file
+          return
+        }
 
         // * send the Receiver name first,to get his socket ID and to check if he is Online.
         socket.emit('get_receiver', { receiver: receiver })
