@@ -1,0 +1,66 @@
+version : '3'
+
+services:
+    lb:
+        image: haproxy:alpine
+        volumes:
+            - ./haproxy:/usr/local/etc/haproxy
+            - ./assets:/usr/local/etc/assets
+        links:
+            - sig1
+            - sig2
+            - sig3
+            - sig4
+        ports:
+            - "3000:80"
+
+    sig1:
+        image: signaling
+        links:
+            - redis
+        expose:
+            - "3000"
+        environment:
+            - NAME=A
+        depends_on:
+            - redis
+
+    sig2:
+        image: signaling
+        links:
+            - redis
+        expose:
+            - "3000"
+        environment:
+            - NAME=B
+        depends_on:
+            - redis
+
+    sig3:
+        image: signaling
+        links:
+            - redis
+        expose:
+            - "3000"
+        environment:
+            - NAME=C
+        depends_on:
+            - redis
+
+    sig4:
+        image: signaling
+        links:
+            - redis
+        expose:
+            - "3000"
+        environment:
+            - NAME=D
+        depends_on:
+            - redis
+
+    redis:
+        image: redis:alpine
+        expose:
+            - "6379"
+        # ports:
+        #     - 6379:6379
