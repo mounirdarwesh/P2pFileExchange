@@ -10,12 +10,14 @@
   "author": "Mounir Darwish",
   "license": "GPL-3.0",
   "dependencies": {
+    "@socket.io/redis-adapter": "^8.2.1",
     "dotenv": "^16.0.3",
+    "ioredis": "^5.3.2",
     "rate-limiter-flexible": "^2.4.1",
     "socket.io": "^4.6.1"
   },
   "pkg": {
-    "scripts": "Server.js",
+    "scripts": "server.js",
     "assets": [
       "./assets"
     ],
