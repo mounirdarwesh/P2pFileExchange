@@ -1,4 +1,4 @@
-FROM node:lts-bullseye-slim
+FROM node:alpine
 
 ENV NODE_ENV production
 
@@ -18,4 +18,4 @@ COPY . .
 
 EXPOSE 3000
 USER node
-CMD ["node", "Server.js" ]
+CMD ["node", "server.js" ]
