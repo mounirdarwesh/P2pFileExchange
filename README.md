@@ -1,4 +1,4 @@
-# Medizinische Dateiübertragung mit WebRTC
+# Dateiübertragung mit WebRTC
 
 Dies ist ein Node.js-Programm, das den Peer-to-Peer-Transfer von (medizinischen) Dateien zwischen zwei Benutzern mittels WebRTC-Technologie ermöglicht. Dieses Projekt wurde im Rahmen einer Bachelorarbeit bei der Firma mediIT GmbH erstellt.
 
@@ -21,13 +21,16 @@ Dies ist ein Node.js-Programm, das den Peer-to-Peer-Transfer von (medizinischen)
 
 ## Verwendung des Servers
 
-* Starten Sie den Server: `node Server.js`
+* Erstellung der self-signed Certificate mit Client-Side Certificate
+* Starten Sie den Server: `npm start`
 
 ## Verwendung des Clients
 
 * Zuerst sollte ein Ordner mit diesem Pfad erstellt werden: `C:\Common\termininfo\InstitutionInterface\fileexchange\`
 * Dieser Ordner sollte eine Datei namens `ID.txt` enthalten, die eine ID enthält und die Ordner `receiveData` und `sendData` sollten erstellt werden
-* Starten Sie einen Client: "node Client.js".
+* Erstellung der self-signed Certificate mit Client-Side Certificate
+* Erstellung der config.ini 
+* Starten Sie einen Client: `npm start`.
 
 ## So funktioniert es
 
