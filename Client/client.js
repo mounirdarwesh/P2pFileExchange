@@ -125,6 +125,12 @@ class SocketInstance {
         if (receiver === sender) {
           logger.warn('you cannot sent to your self!')
           // TODO delete the file
+          fs.unlink(sendFolder + sortedFiles[0].name, (err) => {
+            if (err) {
+              logger.error(err)
+            }
+          })
+          sortedFiles = []
           return
         }
 
