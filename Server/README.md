@@ -15,9 +15,15 @@ Before setting up the signaling server, ensure that you have the following insta
 
     `docker build -t signaling .`
 
-2. Then run Docker-compose
+2. Make sure you are in the project directory.
+
+3. Start the Docker containers using Docker Compose:
 
     `docker-compose up`
+
+    This command will build the signaling server and Redis containers, as well as the load balancer. It will also link them together and expose the necessary ports.
+
+4. Once the containers are up and running, you can access the signaling server through the load balancer at https://localhost:3000.
 
 
 ## Architecture Diagram
