@@ -14,6 +14,7 @@ const redis = new Redis({ host: 'redis' })
 //* on Start flush db.
 redis.flushdb()
 
+//* PubSub Client to exchange the Messages between the Servers
 const pubClient = redis.duplicate()
 const subClient = redis.duplicate()
 
