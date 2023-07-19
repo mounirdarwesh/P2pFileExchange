@@ -5,14 +5,14 @@ services:
         image: haproxy:alpine
         volumes:
             - ./haproxy:/usr/local/etc/haproxy
-            - ./assets:/usr/local/etc/assets
+            #- ./assets:/usr/local/etc/assets
         links:
             - sig1
             - sig2
             - sig3
             - sig4
         ports:
-            - "3000:80"
+            - "3000:3000"
 
     sig1:
         image: signaling
