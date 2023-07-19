@@ -27,7 +27,7 @@ jobs:
 
       - name: Build for Windows
         working-directory: ./Client
-        run: npm run build
+        run: pkg .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v2
