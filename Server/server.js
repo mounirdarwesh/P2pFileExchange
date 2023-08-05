@@ -71,19 +71,19 @@ io.use((client, next) => {
 
 //* Middleware to handle Logging and Authentication
 io.use((client, next) => {
-  const sender = client.handshake.auth.sender
+  // const sender = client.handshake.auth.sender
 
-  redis.exists(sender, (err, reply) => {
-    if (err) {
-      next(err)
-    }
-    //* if username already exist.
-    if (reply === 1) {
-      const err = new Error('Username is already Exist, please choose another.')
-      next(err)
-      console.log('Username is already Exist')
-    }
-  })
+  // redis.exists(sender, (err, reply) => {
+  //   if (err) {
+  //     next(err)
+  //   }
+  //   //* if username already exist.
+  //   if (reply === 1) {
+  //     const err = new Error('Username already exists, please choose another.')
+  //     next(err)
+  //     console.log('Username already exists')
+  //   }
+  // })
 
   //* disconnect Client if the Credentials wrong
   //* that ensure the Authenticity of the Client, because DTLS provides just encryption and integrity
@@ -106,10 +106,16 @@ io.on('connection', client => {
     if (err) {
       console.error(err)
     }
-    //* if username not exist.
-    if (reply === 0) {
-      redis.set(sender, client.id)
+    if (reply === 1) {
+      redis.del(sender)
+      NUM--
     }
+    redis.set(sender, client.id)
+
+    // //* if username not exist.
+    // if (reply === 0) {
+    //   redis.set(sender, client.id)
+    // }
   })
 
   // //* print the Map entries
@@ -191,6 +197,15 @@ io.on('connection', client => {
     NUM--
     console.log(`${sender} Client is disconnected, # of Online Users ` + NUM)
     io.sockets.emit('socketDisconnect', 'a Client has been disconnected!')
+  })
+
+  client.on('connect_error', (err) => {
+    console.error(err.message)
+    //* when a user disconnect delete his record in the Map.
+    redis.del(sender)
+    //* decrease the Number of Online Users
+    NUM--
+    console.log(`${sender} Client is disconnected due an Error, # of Online Users ` + NUM)
   })
 })
 

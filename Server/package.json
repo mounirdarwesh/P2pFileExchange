@@ -1,6 +1,6 @@
 {
   "name": "signaling_server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Transfer JSON file from a medical Center to another Peer to Peer Using WebRTC",
   "bin": "Server.js",
   "scripts": {
