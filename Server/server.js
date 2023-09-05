@@ -18,13 +18,6 @@ redis.flushdb()
 const pubClient = redis.duplicate()
 const subClient = redis.duplicate()
 
-pubClient.on('error', (err) => {
-  console.log(err)
-})
-subClient.on('error', (err) => {
-  console.log(err)
-})
-
 //* create https Server with self signed Certificate
 const httpsServer = createServer({
   key: readFileSync(path.join(__dirname, './assets/key.pem')),
@@ -47,14 +40,20 @@ const io = new Server(httpsServer, { /* here to update the path */ })
 
 io.adapter(createAdapter(pubClient, subClient))
 
-const NAME = process.env.NAME
+const NAME_OF_SERVER = process.env.NAME
+const USER_EXISTS = 1
+const USER_NOT_EXISTS = 0
 
 //* Counter for the Online Users
-let NUM = 0
+let numberOfUsers = 0
 
-//* Map to manage the Online Users Entries and send Messages to specific user
-// ? DB for user Authentication. (Future work for every Client Certificate and Password)
-// const users = new Map()
+//* PubSub errors
+pubClient.on('error', (err) => {
+  console.log(err)
+})
+subClient.on('error', (err) => {
+  console.log(err)
+})
 
 //* Rate limiter to Protect the Server form DDoS and brute force attacks
 io.use((client, next) => {
@@ -71,20 +70,6 @@ io.use((client, next) => {
 
 //* Middleware to handle Logging and Authentication
 io.use((client, next) => {
-  // const sender = client.handshake.auth.sender
-
-  // redis.exists(sender, (err, reply) => {
-  //   if (err) {
-  //     next(err)
-  //   }
-  //   //* if username already exist.
-  //   if (reply === 1) {
-  //     const err = new Error('Username already exists, please choose another.')
-  //     next(err)
-  //     console.log('Username already exists')
-  //   }
-  // })
-
   //* disconnect Client if the Credentials wrong
   //* that ensure the Authenticity of the Client, because DTLS provides just encryption and integrity
   //* CIA Principe
@@ -98,34 +83,23 @@ io.use((client, next) => {
 //* Fired on new Client connect
 io.on('connection', client => {
   //* username of the sender and recipient
-  const sender = client.handshake.auth.sender
+  const SENDER = client.handshake.auth.sender
   let receiver
 
   //* save the Username and his ID
-  redis.exists(sender, (err, reply) => {
+  redis.exists(SENDER, (err, reply) => {
     if (err) {
       console.error(err)
     }
-    if (reply === 1) {
-      redis.del(sender)
-      NUM--
+    if (reply === USER_EXISTS) {
+      redis.del(SENDER)
     }
-    redis.set(sender, client.id)
-
-    // //* if username not exist.
-    // if (reply === 0) {
-    //   redis.set(sender, client.id)
-    // }
+    redis.set(SENDER, client.id)
   })
 
-  // //* print the Map entries
-  // for (const [key, value] of users) {
-  //   console.log(key + ' = ' + value)
-  // }
-
   //* increase the Count of Online Users
-  NUM++
-  console.log(`${sender} has Joined, # of Online Users ` + NUM)
+  numberOfUsers++
+  console.log(`${SENDER} has Joined, # of Online Users ` + numberOfUsers)
 
   client.on('get_receiver', (data) => {
     receiver = data.receiver
@@ -135,8 +109,8 @@ io.on('connection', client => {
         console.error(err)
       }
       //* username not Online.
-      if (reply === 0) {
-        redis.get(sender, (err, receiverClientID) => {
+      if (reply === USER_NOT_EXISTS) {
+        redis.get(SENDER, (err, receiverClientID) => {
           if (err) {
             console.error(err)
           }
@@ -144,10 +118,10 @@ io.on('connection', client => {
           io.to(receiverClientID).emit('receiverStatus', false)
         })
 
-        console.log(`Receiver ${receiver} is not Online, Sender ${sender} `)
+        console.log(`Receiver ${receiver} is not Online, Sender ${SENDER} `)
       } else {
-        console.log(`Receiver ${receiver} is Online, Sender ${sender} `)
-        redis.get(sender, (err, receiverClientID) => {
+        console.log(`Receiver ${receiver} is Online, Sender ${SENDER} `)
+        redis.get(SENDER, (err, receiverClientID) => {
           if (err) {
             console.error(err)
           }
@@ -160,7 +134,6 @@ io.on('connection', client => {
 
   //* handle Calling event form the Sender and redirect it to the intended recipient
   client.on('calling', (callerID) => {
-    // console.log(`calling  ${receiver} ${performRedisOperation('get', receiver)} `)
     redis.get(receiver, (err, receiverClientID) => {
       if (err) {
         console.error(err)
@@ -192,22 +165,22 @@ io.on('connection', client => {
   //* if any Client disconnect, decrease the Number of online User and tell other Users
   client.on('disconnect', () => {
     //* when a user disconnect delete his record in the Map.
-    redis.del(sender)
+    redis.del(SENDER)
     //* decrease the Number of Online Users
-    NUM--
-    console.log(`${sender} Client is disconnected, # of Online Users ` + NUM)
+    numberOfUsers--
+    console.log(`${SENDER} Client is disconnected, # of Online Users ` + numberOfUsers)
     io.sockets.emit('socketDisconnect', 'a Client has been disconnected!')
   })
 
   client.on('connect_error', (err) => {
     console.error(err.message)
     //* when a user disconnect delete his record in the Map.
-    redis.del(sender)
+    redis.del(SENDER)
     //* decrease the Number of Online Users
-    NUM--
-    console.log(`${sender} Client is disconnected due an Error, # of Online Users ` + NUM)
+    numberOfUsers--
+    console.log(`${SENDER} Client is disconnected due an Error, # of Online Users ` + numberOfUsers)
   })
 })
 
 //* Start the Server on Port 3000
-httpsServer.listen(process.env.PORT, () => { console.log(`Server ${NAME} is Listening on Port ${process.env.PORT}... `) })
+httpsServer.listen(process.env.PORT, () => { console.log(`Server ${NAME_OF_SERVER} is Listening on Port ${process.env.PORT}... `) })
