@@ -7,10 +7,10 @@ const { io } = require('socket.io-client')
 const Peer = require('simple-peer')
 const wrtc = require('wrtc')
 const path = require('node:path')
-const turnCredential = require('./turnCredential')
-const folderHandler = require('./folderHandler')
+const turnCredential = require('./turn-credential')
+const folderHandler = require('./folder-handler')
 require('dotenv').config({ path: path.join(__dirname, '.env') })
-const hashFile = require('./hashFile')
+const hashFile = require('./hash')
 const log4js = require('log4js')
 const ini = require('ini')
 
@@ -40,12 +40,12 @@ log4js.configure({
 const logger = log4js.getLogger('p2p')
 
 //* Paths and Amount of Time for Polling
-const sendFolder = config.path.SEND_PATH
-const receiveFolder = config.path.RECEIVE_PATH
-const timer = config.path.TIMER ?? 2000
+const SEND_FOLDER = config.path.SEND_PATH
+const RECEIVE_FOLDER = config.path.RECEIVE_PATH
+const TIMER = config.path.TIMER ?? 2000
 
 //* check if they exists, otherwise exit
-if (!timer || !sendFolder || !receiveFolder) {
+if (!TIMER || !SEND_FOLDER || !RECEIVE_FOLDER) {
   logger.fatal('Please enter the Arguments Polling Time and Paths')
   process.exit(1)
 }
@@ -60,15 +60,16 @@ let sender = fs.readFileSync(config.path.ID_PATH, 'utf8',
     sender = data
   }
 )
-
-sender = sender.split('.').at(0)
+const FIRST_ITEM = 0
+const USER_ID = 1
+sender = sender.split('.').at(FIRST_ITEM)
 logger.log(`My ID is ${sender}, v1.1.0`)
 
 //* Interval to look in send Folder if there is File to be sent.
 let pollInterval
 
 //* read the Files from sendData Folder that should be sent
-let sortedFiles = folderHandler(sendFolder)
+let sortedFiles = folderHandler(SEND_FOLDER)
 
 //* Class to create new WebSocket Connection
 class SocketInstance {
@@ -76,7 +77,7 @@ class SocketInstance {
   newSocket(sender) {
     let receiver
     if (sortedFiles.length !== 0) {
-      receiver = sortedFiles[0].name.split('_').at(1).split('.').at(0)
+      receiver = sortedFiles[FIRST_ITEM].name.split('_').at(USER_ID).split('.').at(FIRST_ITEM)
     } else {
       logger.log('There is no Files to be sent')
       receiver = null
@@ -100,78 +101,15 @@ class SocketInstance {
       // trickle: false
     })
 
-    //* this helper Function make an event and return a Promise.
-    function waitForEvent(eventName) {
-      return new Promise((resolve, reject) => {
-        socket.on(eventName, (data) => {
-          logger.log(`Is User ${receiver} Online: ${data}`)
-          resolve(data)
-        })
-        socket.on('disconnect', () => {
-          reject(new Error('Socket disconnected'))
-        })
-        socket.on('error', (error) => {
-          reject(error)
-        })
-      })
-    }
-
-    function transfer() {
-      //* if there is file to be transfer
-      if (sortedFiles.length > 0) {
-        //* get the receiver ID
-        receiver = sortedFiles[0].name.split('_').at(1).split('.').at(0)
-
-        if (receiver === sender) {
-          logger.warn('you cannot sent to your self!')
-          // TODO delete the file
-          fs.unlink(sendFolder + sortedFiles[0].name, (err) => {
-            if (err) {
-              logger.error(err)
-            }
-          })
-          sortedFiles = []
-          return
-        }
-
-        // * send the Receiver name first,to get his socket ID and to check if he is Online.
-        socket.emit('get_receiver', { receiver: receiver })
-
-        // ! without the semicolon the IIFE will be assigned to online var.
-        let online = true;
-        //* Immediately invoked function expression (IIFE) to wait for the Status.
-        (async () => {
-          //* wait to get from Signaling Server if the Receiver Online
-          online = await waitForEvent('receiverStatus')
-          if (online) {
-            // * call the other Receiver.
-            socket.emit('calling', socket.id)
-
-            //* init a new WebRTC Connection to the Receiver
-            const callee = new PeerConn(true, socket)
-            callee.connect(receiver)
-          } else {
-            //* if the Peer is Offline, delete his file form the List.
-            //* retry in the next poll.
-            sortedFiles = sortedFiles.filter(file => file.name.split('_').at(1).split('.').at(0) !== receiver)
-          }
-        })()
-      }
-      //* when the Array is empty refill it from folder
-      if (sortedFiles.length === 0) {
-        sortedFiles = folderHandler(sendFolder)
-      }
-    }
-
     //* on Connect event
     socket.on('connect', () => {
       logger.log(`connected to WebSocket with id ${socket.id}`)
       //* Start to send Files
-      transfer()
+      this.transfer(socket, receiver)
       //* and every 2 Seconds repeat the same Process
       pollInterval = setInterval(() => {
-        transfer()
-      }, timer)
+        this.transfer(socket, receiver)
+      }, TIMER)
     })
 
     //* init a Data Channel when the Sender rings
@@ -192,6 +130,69 @@ class SocketInstance {
     })
 
     return socket
+  }
+
+  //* this helper Function make an event and return a Promise.
+  waitForEvent(eventName, socket, receiver) {
+    return new Promise((resolve, reject) => {
+      socket.on(eventName, (data) => {
+        logger.log(`Is User ${receiver} Online: ${data}`)
+        resolve(data)
+      })
+      socket.on('disconnect', () => {
+        reject(new Error('Socket disconnected'))
+      })
+      socket.on('error', (error) => {
+        reject(error)
+      })
+    })
+  }
+
+  transfer(socket, receiver) {
+    //* if there is file to be transfer
+    if (sortedFiles.length > 0) {
+      //* get the receiver ID
+      receiver = sortedFiles[0].name.split('_').at(1).split('.').at(0)
+
+      if (receiver === sender) {
+        logger.warn('you cannot sent to your self!')
+        // TODO delete the file
+        fs.unlink(SEND_FOLDER + sortedFiles[0].name, (err) => {
+          if (err) {
+            logger.error(err)
+          }
+        })
+        sortedFiles = []
+        return
+      }
+
+      // * send the Receiver name first,to get his socket ID and to check if he is Online.
+      socket.emit('get_receiver', { receiver: receiver })
+
+      // ! without the semicolon the IIFE will be assigned to online var.
+      let online = true;
+      //* Immediately invoked function expression (IIFE) to wait for the Status.
+      (async () => {
+        //* wait to get from Signaling Server if the Receiver Online
+        online = await this.waitForEvent('receiverStatus', socket, receiver)
+        if (online) {
+          // * call the other Receiver.
+          socket.emit('calling', socket.id)
+
+          //* init a new WebRTC Connection to the Receiver
+          const callee = new PeerConn(true, socket)
+          callee.connect(receiver)
+        } else {
+          //* if the Peer is Offline, delete his file form the List.
+          //* retry in the next poll.
+          sortedFiles = sortedFiles.filter(file => file.name.split('_').at(1).split('.').at(0) !== receiver)
+        }
+      })()
+    }
+    //* when the Array is empty refill it from folder
+    if (sortedFiles.length === 0) {
+      sortedFiles = folderHandler(SEND_FOLDER)
+    }
   }
 }
 
@@ -286,7 +287,7 @@ class PeerConn {
             return
           }
 
-          this.readPeerFileStream(sendFolder + toSend[index].name, toSend[index].name)
+          this.readPeerFileStream(SEND_FOLDER + toSend[index].name, toSend[index].name)
             .then(() => {
               sendNextFile(index + 1)
             })
@@ -311,26 +312,26 @@ class PeerConn {
         // * print the name of received file form the other Peer
         logger.log(ack.fileName)
         //* create the hash
-        const hashDigest = hashFile(sendFolder + ack.fileName)
+        const hashDigest = hashFile(SEND_FOLDER + ack.fileName)
         logger.trace(hashDigest)
         //* making sure file integrity by comparing Hash Digest
         if (ack.hashDigest === hashDigest) {
           // * delete file form the List.
           sortedFiles = sortedFiles.filter(file => file.name !== ack.fileName)
           // * then delete file form the folder.
-          this.deleteFileFromFs(sendFolder + ack.fileName)
+          this.deleteFileFromFs(SEND_FOLDER + ack.fileName)
         }
       } else {
         //* file form sender
         const gotFromPeer = JSON.parse(data)
         //* indicates the End of File (EOF)
         if (gotFromPeer.done === true) {
-          this.writeChunksToFile(chunks, receiveFolder + gotFromPeer.fileName)
+          this.writeChunksToFile(chunks, RECEIVE_FOLDER + gotFromPeer.fileName)
 
           chunks = []
           logger.log('Write successfully completed for this file ' + gotFromPeer.fileName)
           //* create the hash
-          const hashDigest = hashFile(receiveFolder + gotFromPeer.fileName)
+          const hashDigest = hashFile(RECEIVE_FOLDER + gotFromPeer.fileName)
           logger.trace(hashDigest)
           // * send Ack
           try {
