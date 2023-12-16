@@ -13,7 +13,7 @@
     "@socket.io/redis-adapter": "^8.2.1",
     "dotenv": "^16.3.1",
     "ioredis": "^5.3.2",
-    "rate-limiter-flexible": "^3.0.4",
+    "rate-limiter-flexible": "^3.0.6",
     "socket.io": "^4.7.2"
   },
   "pkg": {
@@ -26,10 +26,10 @@
     ]
   },
   "devDependencies": {
-    "eslint": "^8.53.0",
+    "eslint": "^8.56.0",
     "eslint-config-standard": "^17.1.0",
-    "eslint-plugin-import": "^2.29.0",
-    "eslint-plugin-n": "^16.3.1",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-n": "^16.4.0",
     "eslint-plugin-promise": "^6.1.1"
   }
 }
