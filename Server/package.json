@@ -11,10 +11,10 @@
   "license": "GPL-3.0",
   "dependencies": {
     "@socket.io/redis-adapter": "^8.2.1",
-    "dotenv": "^16.3.1",
+    "dotenv": "^16.3.2",
     "ioredis": "^5.3.2",
-    "rate-limiter-flexible": "^3.0.6",
-    "socket.io": "^4.7.2"
+    "rate-limiter-flexible": "^4.0.0",
+    "socket.io": "^4.7.4"
   },
   "pkg": {
     "scripts": "server.js",
@@ -29,7 +29,7 @@
     "eslint": "^8.56.0",
     "eslint-config-standard": "^17.1.0",
     "eslint-plugin-import": "^2.29.1",
-    "eslint-plugin-n": "^16.4.0",
+    "eslint-plugin-n": "^16.6.2",
     "eslint-plugin-promise": "^6.1.1"
   }
 }
