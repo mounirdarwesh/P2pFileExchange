@@ -14,7 +14,7 @@
     "dotenv": "^16.4.5",
     "ioredis": "^5.4.1",
     "rate-limiter-flexible": "^4.0.1",
-    "socket.io": "^4.7.5"
+    "socket.io": "^4.8.1"
   },
   "pkg": {
     "scripts": "server.js",
@@ -26,10 +26,10 @@
     ]
   },
   "devDependencies": {
-    "eslint": "^9.8.0",
+    "eslint": "^9.13.0",
     "eslint-config-standard": "^17.1.0",
-    "eslint-plugin-import": "^2.29.1",
-    "eslint-plugin-n": "^17.10.1",
-    "eslint-plugin-promise": "^7.0.0"
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-n": "^17.11.1",
+    "eslint-plugin-promise": "^7.1.0"
   }
 }
