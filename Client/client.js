@@ -5,7 +5,7 @@
 const fs = require('fs')
 const { io } = require('socket.io-client')
 const Peer = require('simple-peer')
-const wrtc = require('wrtc')
+const wrtc = require('@roamhq/wrtc')
 const path = require('node:path')
 const turnCredential = require('./turn-credential')
 const folderHandler = require('./folder-handler')

@@ -11,12 +11,12 @@
   "license": "GPL-3.0",
   "dependencies": {
     "@mapbox/node-pre-gyp": "^2.0.0",
+    "@roamhq/wrtc": "^0.8.0",
     "dotenv": "^16.5.0",
     "ini": "^5.0.0",
     "log4js": "^6.9.1",
     "simple-peer": "^9.11.1",
-    "socket.io-client": "^4.8.1",
-    "wrtc": "^0.4.7"
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
     "eslint": "^9.25.0",
