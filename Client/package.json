@@ -11,7 +11,7 @@
   "license": "GPL-3.0",
   "dependencies": {
     "@mapbox/node-pre-gyp": "^2.0.0",
-    "@roamhq/wrtc": "^0.8.0",
+    "@roamhq/wrtc": "^0.9.0",
     "dotenv": "^16.5.0",
     "ini": "^5.0.0",
     "log4js": "^6.9.1",
@@ -19,11 +19,9 @@
     "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
-    "eslint": "^9.25.0",
-    "eslint-config-standard": "^17.1.0",
-    "eslint-plugin-import": "^2.31.0",
-    "eslint-plugin-n": "^17.17.0",
-    "eslint-plugin-promise": "^7.2.1"
+    "@eslint/js": "^9.27.0",
+    "eslint": "^9.27.0",
+    "globals": "^16.2.0"
   },
   "pkg": {
     "scripts": "Client.js",
