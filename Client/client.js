@@ -1,7 +1,6 @@
+/* eslint-disable no-undef */
 'use strict'
 
-/* eslint-disable object-shorthand */
-/* eslint-disable space-before-function-paren */
 const fs = require('fs')
 const { io } = require('socket.io-client')
 const Peer = require('simple-peer')
@@ -13,6 +12,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') })
 const hashFile = require('./hash')
 const log4js = require('log4js')
 const ini = require('ini')
+const https = require('https');
 
 //* Global Variables and Configurations
 //*  Configurations for ini file
@@ -63,7 +63,7 @@ let sender = fs.readFileSync(config.path.ID_PATH, 'utf8',
 const FIRST_ITEM = 0
 const USER_ID = 1
 sender = sender.split('.').at(FIRST_ITEM)
-logger.log(`My ID is ${sender}, v1.1.0`)
+logger.log(`My ID is ${sender} connecting to ${config.server.SERVER_URL}, v1.1.0`)
 
 //* Interval to look in send Folder if there is File to be sent.
 let pollInterval
@@ -85,6 +85,13 @@ class SocketInstance {
 
     const decodeBase64 = (str) => Buffer.from(str, 'base64').toString('utf-8')
 
+    const agent = new https.Agent({
+      ca: fs.readFileSync(path.join(__dirname, 'certificate/ca-cert.pem')),
+      cert: fs.readFileSync(path.join(__dirname, 'certificate/client-cert.pem')),
+      key: fs.readFileSync(path.join(__dirname, 'certificate/client-key.pem')),
+      rejectUnauthorized: true
+    });
+
     // * new secure Socket.io instance with Client side Certificate for more Security
     // * and Authenticity and Token as a Client Password.
     const socket = io(config.server.SERVER_URL, {
@@ -94,12 +101,19 @@ class SocketInstance {
         token: decodeBase64(decodeBase64(config.key.SECRET_KEY)),
         sender: sender
       },
-      ca: fs.readFileSync(path.join(__dirname, 'certificate/cert.pem')),
-      cert: fs.readFileSync(path.join(__dirname, 'certificate/client-cert.pem')),
-      key: fs.readFileSync(path.join(__dirname, 'certificate/client-key.pem')),
-      rejectUnauthorized: false
+      agent: agent,
       // trickle: false
     })
+
+    // socket.on('connect_error', (error) => {
+    //   console.error('Connect error:', error.message);
+    //   console.error('Type:', error.type);
+    //   console.error('Context:', error.context);
+    // });
+
+    // process.on('warning', (warning) => {
+    //   console.warn('Warning:', warning.message);
+    // });
 
     //* on Connect event
     socket.on('connect', () => {

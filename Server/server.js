@@ -20,13 +20,24 @@ const subClient = redis.duplicate()
 
 //* create https Server with self signed Certificate
 const httpsServer = createServer({
-  key: readFileSync(path.join(__dirname, './assets/key.pem')),
-  cert: readFileSync(path.join(__dirname, './assets/cert.pem')),
+  key: readFileSync(path.join(__dirname, './assets/server-key.pem')),
+  cert: readFileSync(path.join(__dirname, './assets/server-cert.pem')),
   requestCert: true,
+  rejectUnauthorized: true,
   ca: [
-    readFileSync(path.join(__dirname, './assets/client-cert.pem'))
+    readFileSync(path.join(__dirname, './assets/ca-cert.pem'))
   ]
 })
+
+// httpsServer.on('tlsClientError', (err, socket) => {
+//   console.error('TLS Client Error:', err.message);
+//   console.error('Error code:', err.code);
+// });
+
+// httpsServer.on('secureConnection', (socket) => {
+//   const cert = socket.getPeerCertificate();
+//   console.log('Client cert:', cert);
+// });
 
 //* create Rate Limiter object for every connection has per seconde 5 point to consume.
 const rateLimiter = new RateLimiterMemory(
