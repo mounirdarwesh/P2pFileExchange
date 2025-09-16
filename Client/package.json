@@ -2,7 +2,7 @@
   "name": "p2p_file_transfer",
   "version": "1.0.3",
   "description": "Transfer JSON file from a medical Center to another Peer to Peer Using WebRTC",
-  "bin": "Client.js",
+  "bin": "client.js",
   "scripts": {
     "start": "node client.js",
     "build": "pkg --compress GZip ."
@@ -24,10 +24,12 @@
     "globals": "^16.2.0"
   },
   "pkg": {
-    "scripts": "Client.js",
+    "scripts": "client.js",
     "assets": [
-      "./certificate",
-      ".env"
+      "./certificate/**/*",
+      ".env",
+      "config.ini",
+      "./node_modules/@roamhq/wrtc-win32-x64/**/*"
     ],
     "targets": [
       "node18-win-x64"
