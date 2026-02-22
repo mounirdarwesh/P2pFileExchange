@@ -10,3 +10,7 @@
 	- docker compose down
 	- docker load -i signaling.tar
 	- docker compose up -d
+
+# Locally Update .exe
+	- npm install -g @yao-pkg/pkg
+	- pkg client.js -o p2pClient
