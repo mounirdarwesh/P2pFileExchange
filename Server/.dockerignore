@@ -2,3 +2,9 @@ node_modules
 npm-debug.log
 signaling_server
 *.old
+.git
+.gitignore
+Dockerfile
+docker-compose*.yml
+haproxy/
+*.md
