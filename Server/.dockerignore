@@ -8,3 +8,5 @@ Dockerfile
 docker-compose*.yml
 haproxy/
 *.md
+# Secrets come from compose env_file at runtime, never baked into the image
+.env*

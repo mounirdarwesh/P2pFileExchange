@@ -20,6 +20,8 @@ services:
             - redis
         expose:
             - "3000"
+        env_file:
+            - .env
         environment:
             - NAME=A
         depends_on:
@@ -32,6 +34,8 @@ services:
             - redis
         expose:
             - "3000"
+        env_file:
+            - .env
         environment:
             - NAME=B
         depends_on:
@@ -44,6 +48,8 @@ services:
     #         - redis
     #     expose:
     #         - "3000"
+    #     env_file:
+    #         - .env
     #     environment:
     #         - NAME=C
     #     depends_on:
@@ -56,6 +62,8 @@ services:
     #         - redis
     #     expose:
     #         - "3000"
+    #     env_file:
+    #         - .env
     #     environment:
     #         - NAME=D
     #     depends_on:
