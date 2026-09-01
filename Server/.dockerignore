@@ -1,12 +1,31 @@
+# Dependencies are installed inside the image by `npm ci`; the host tree is
+# built for Windows and would clobber it.
 node_modules
-npm-debug.log
+
+# Build artifacts. signaling.tar is a `docker save` of this image, so leaving it
+# in the context would bake a 60MB copy of the image into the image.
 signaling_server
+*.tar
 *.old
+
+# Logs
+*.log
+
+# Version control
 .git
 .gitignore
+
+# Tooling and infrastructure that runs outside the container
 Dockerfile
+.dockerignore
 docker-compose*.yml
 haproxy/
+nginx/
+.eslintrc.json
+eslint.config.mjs
+
+# Docs
 *.md
+
 # Secrets come from compose env_file at runtime, never baked into the image
 .env*
